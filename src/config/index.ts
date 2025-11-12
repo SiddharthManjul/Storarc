@@ -12,7 +12,7 @@ export const config = {
   openai: {
     apiKey: process.env.OPENAI_API_KEY || '',
     embeddingModel: 'text-embedding-3-small',
-    chatModel: 'gpt-4-turbo-preview',
+    chatModel: process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini',
   },
 
   // Sui Configuration
