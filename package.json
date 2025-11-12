@@ -1,0 +1,40 @@
+{
+  "name": "dvector-rag-walrus",
+  "version": "1.0.0",
+  "description": "Decentralized RAG system with Walrus storage and Seal access control",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "setup": "tsx src/scripts/setup.ts",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "ingest": "tsx src/scripts/ingest.ts",
+    "query": "tsx src/scripts/query.ts",
+    "test": "tsx src/scripts/test-walrus.ts"
+  },
+  "keywords": ["rag", "walrus", "sui", "seal", "vector-db", "langchain"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@mysten/sui.js": "^0.54.1",
+    "@langchain/community": "^0.0.45",
+    "@langchain/core": "^0.1.52",
+    "@langchain/openai": "^0.0.25",
+    "langchain": "^0.1.30",
+    "faiss-node": "^0.5.1",
+    "openai": "^4.28.4",
+    "dotenv": "^16.4.5",
+    "pdf-parse": "^1.1.1",
+    "axios": "^1.6.7",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "@types/pdf-parse": "^1.1.4",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}
