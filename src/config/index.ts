@@ -20,6 +20,9 @@ export const config = {
     network: process.env.SUI_NETWORK || 'testnet',
     privateKey: process.env.SUI_PRIVATE_KEY || '',
     rpcUrl: process.env.SUI_RPC_URL || 'https://fullnode.testnet.sui.io:443',
+    // Vector Registry smart contract
+    vectorRegistryPackageId: process.env.VECTOR_REGISTRY_PACKAGE_ID || '',
+    vectorRegistryObjectId: process.env.VECTOR_REGISTRY_OBJECT_ID || '',
   },
 
   // Walrus Configuration
