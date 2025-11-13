@@ -1,6 +1,7 @@
 import { SuiClient, SuiTransactionBlockResponse } from '@mysten/sui.js/client';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
+import { decodeSuiPrivateKey } from '@mysten/sui.js/cryptography';
 import { config } from '../config/index.js';
 
 /**
@@ -17,9 +18,9 @@ export class SuiClientService {
     // Initialize keypair if private key is provided
     if (config.sui.privateKey) {
       try {
-        this.keypair = Ed25519Keypair.fromSecretKey(
-          Buffer.from(config.sui.privateKey.replace('suiprivkey1q', ''), 'base64')
-        );
+        // Decode the bech32-encoded private key
+        const { secretKey } = decodeSuiPrivateKey(config.sui.privateKey);
+        this.keypair = Ed25519Keypair.fromSecretKey(secretKey);
       } catch (error) {
         console.warn('Failed to initialize Sui keypair:', error);
       }
@@ -217,7 +218,38 @@ export class SuiClientService {
       parentId: tableId,
     });
 
-    return dynamicFields.data;
+    // Fetch the actual content of each dynamic field
+    const documents = await Promise.all(
+      dynamicFields.data.map(async (field) => {
+        const fieldData = await this.client.getDynamicFieldObject({
+          parentId: tableId,
+          name: field.name,
+        });
+
+        if (!fieldData.data) {
+          return null;
+        }
+
+        // The value is nested under fields.value.fields
+        const docInfo = (fieldData.data as any).content?.fields?.value?.fields;
+        if (!docInfo) {
+          return null;
+        }
+
+        return {
+          filename: (fieldData.data as any).content.fields.name,
+          vectorBlobId: docInfo.vector_blob_id,
+          documentBlobId: docInfo.document_blob_id,
+          chunkCount: parseInt(docInfo.chunk_count),
+          embeddingModel: docInfo.embedding_model,
+          owner: docInfo.owner,
+          uploadedAt: parseInt(docInfo.uploaded_at),
+          accessPolicyId: docInfo.access_policy_id,
+        };
+      })
+    );
+
+    return documents.filter((doc) => doc !== null);
   }
 
   /**
