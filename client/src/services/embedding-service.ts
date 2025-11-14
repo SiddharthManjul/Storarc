@@ -1,5 +1,5 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { config } from '@/services/config';
+import { config } from '@/config';
 import { EmbeddingResult } from '../types/index.js';
 
 export class EmbeddingService {
