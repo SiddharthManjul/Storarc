@@ -15,8 +15,8 @@ import { stdin as input, stdout as output } from 'process';
 import { vectorStoreService } from '../services/vector-store';
 import { ragService } from '../services/rag-service';
 import { suiVectorRegistry } from '../services/sui-vector-registry';
+import { documentLoader } from '../services/document-loader';
 import { config, validateConfig } from '../config';
-import * as fs from 'fs/promises';
 
 const rl = readline.createInterface({ input, output });
 
@@ -115,16 +115,33 @@ async function queryDocuments() {
 async function ingestDocument() {
   printHeader('📄 Ingest Document');
 
-  const filepath = await rl.question('Enter file path (or press Enter for inline content): ');
+  print(`Supported formats: ${documentLoader.getSupportedExtensions().join(', ')}`, colors.cyan);
+  const filepath = await rl.question('\nEnter file path (or press Enter for inline content): ');
 
   let content: string;
   let filename: string;
+  let fileType: string = 'text/plain';
 
   if (filepath.trim()) {
     try {
-      content = await fs.readFile(filepath.trim(), 'utf-8');
-      filename = filepath.split('/').pop() || 'document.txt';
+      const trimmedPath = filepath.trim();
+      filename = trimmedPath.split('/').pop() || 'document.txt';
+
+      // Check if file is supported
+      if (!documentLoader.isSupported(filename)) {
+        print(`Unsupported file type. Supported: ${documentLoader.getSupportedExtensions().join(', ')}`, colors.red);
+        return;
+      }
+
+      // Use document loader for supported file types
+      const { content: loadedContent, metadata } = await documentLoader.loadDocument(trimmedPath);
+      content = loadedContent;
+      fileType = metadata.fileType;
+
       print(`✓ Loaded ${filename} (${content.length} characters)`, colors.green);
+      if (metadata.pageCount) {
+        print(`✓ Pages: ${metadata.pageCount}`, colors.green);
+      }
     } catch (error) {
       print(`Error reading file: ${error instanceof Error ? error.message : 'Unknown error'}`, colors.red);
       return;
@@ -156,10 +173,11 @@ async function ingestDocument() {
     }
 
     print('\nIngesting document...', colors.yellow);
-    const result = await ragService.ingestDocument(content, { filename });
+    const result = await ragService.ingestDocument(content, { filename, fileType });
 
     print('\n✅ Document ingested successfully!', colors.green);
     print(`   Filename: ${result.filename}`, colors.blue);
+    print(`   File Type: ${fileType}`, colors.blue);
     print(`   Blob ID: ${result.blobId}`, colors.blue);
     print(`   Size: ${result.metadata.size} bytes`, colors.blue);
   } catch (error) {
