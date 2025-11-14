@@ -2,7 +2,7 @@ import { SuiClient, SuiTransactionBlockResponse } from '@mysten/sui.js/client';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui.js/cryptography';
-import { config } from '@/services/config';
+import { config } from '@/config';
 
 /**
  * Service for interacting with Sui blockchain
