@@ -3,6 +3,13 @@
  * Loads from environment variables
  */
 
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'path';
+
+// Load environment variables from .env.local (for CLI scripts)
+// This is safe to call multiple times - dotenv will only load once
+loadEnv({ path: resolve(process.cwd(), '.env.local') });
+
 export const config = {
   // OpenAI Configuration
   openai: {
@@ -32,6 +39,14 @@ export const config = {
   vectorStore: {
     path: process.env.VECTOR_DB_PATH || './data/vector-store',
     autoSyncInterval: 5 * 60 * 1000, // 5 minutes
+    dimensions: 1536, // text-embedding-3-small dimensions
+  },
+
+  // RAG Configuration
+  rag: {
+    topK: 4, // Number of documents to retrieve
+    chunkSize: 1000, // Characters per chunk
+    chunkOverlap: 200, // Overlap between chunks
   },
 
   // API Configuration
