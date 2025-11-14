@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SuiClient, SuiTransactionBlockResponse } from '@mysten/sui.js/client';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
@@ -120,6 +121,50 @@ export class SuiClientService {
         tx.pure(params.chunkCount, 'u64'),
         tx.pure(embeddingModelBytes),
         tx.pure(params.accessPolicyId ? [params.accessPolicyId] : [], 'vector<address>'),
+      ],
+    });
+
+    return await this.client.signAndExecuteTransactionBlock({
+      transactionBlock: tx,
+      signer: this.keypair,
+      options: {
+        showEffects: true,
+        showEvents: true,
+      },
+    });
+  }
+
+  /**
+   * Update an existing document's vectors in the registry
+   */
+  async updateDocument(params: {
+    registryId: string;
+    filename: string;
+    vectorBlobId: string;
+    chunkCount: number;
+  }): Promise<SuiTransactionBlockResponse> {
+    if (!this.keypair) {
+      throw new Error('No keypair initialized');
+    }
+
+    const packageId = config.sui.vectorRegistryPackageId;
+    if (!packageId) {
+      throw new Error('VECTOR_REGISTRY_PACKAGE_ID not set in config');
+    }
+
+    const tx = new TransactionBlock();
+
+    // Convert strings to vector<u8>
+    const filenameBytes = Array.from(Buffer.from(params.filename, 'utf-8'));
+    const vectorBlobIdBytes = Array.from(Buffer.from(params.vectorBlobId, 'utf-8'));
+
+    tx.moveCall({
+      target: `${packageId}::vector_registry::update_document_vectors`,
+      arguments: [
+        tx.object(params.registryId),
+        tx.pure(filenameBytes),
+        tx.pure(vectorBlobIdBytes),
+        tx.pure(params.chunkCount, 'u64'),
       ],
     });
 
@@ -287,10 +332,37 @@ export class SuiClientService {
    * Check if a document exists in the registry
    */
   async documentExists(registryId: string, filename: string): Promise<boolean> {
+    const packageId = config.sui.vectorRegistryPackageId;
+    if (!packageId) {
+      throw new Error('VECTOR_REGISTRY_PACKAGE_ID not set in config');
+    }
+
     try {
-      await this.getDocumentInfo(registryId, filename);
-      return true;
-    } catch {
+      const tx = new TransactionBlock();
+
+      tx.moveCall({
+        target: `${packageId}::vector_registry::document_exists`,
+        arguments: [
+          tx.object(registryId),
+          tx.pure(filename, 'string'),
+        ],
+      });
+
+      const result = await this.client.devInspectTransactionBlock({
+        transactionBlock: tx,
+        sender: this.keypair?.getPublicKey().toSuiAddress() || '0x0',
+      });
+
+      // Parse the return value (bool)
+      if (result.results && result.results[0] && result.results[0].returnValues) {
+        const returnValue = result.results[0].returnValues[0];
+        // The first byte indicates the boolean value: 1 = true, 0 = false
+        return returnValue[0][0] === 1;
+      }
+
+      return false;
+    } catch (error) {
+      console.warn('Error checking document existence:', error);
       return false;
     }
   }

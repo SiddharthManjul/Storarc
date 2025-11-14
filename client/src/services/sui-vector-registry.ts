@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { suiClientService } from '@/services/sui-client';
 import { walrusClient } from '@/services/walrus-client';
 import {
@@ -68,19 +70,35 @@ export class SuiVectorRegistryService {
     const vectorBlob = await walrusClient.uploadBlob(vectorData);
     console.log(`   ✓ Vectors uploaded: ${vectorBlob.blobId}`);
 
-    // Step 3: Register in Sui
+    // Step 3: Register or update in Sui
     console.log('   Registering in Sui vector registry...');
-    const result = await suiClientService.addDocument({
-      registryId: this.registryId,
-      filename: params.filename,
-      vectorBlobId: vectorBlob.blobId,
-      documentBlobId: params.documentBlobId,
-      chunkCount: params.vectors.length,
-      embeddingModel: params.embeddingModel || config.openai.embeddingModel,
-      accessPolicyId: params.accessPolicyId,
-    });
 
-    console.log(`   ✓ Registered in Sui: ${result.digest}`);
+    // Check if document already exists
+    const exists = await suiClientService.documentExists(this.registryId, params.filename);
+
+    let result;
+    if (exists) {
+      console.log('   ℹ️  Document exists, updating...');
+      result = await suiClientService.updateDocument({
+        registryId: this.registryId,
+        filename: params.filename,
+        vectorBlobId: vectorBlob.blobId,
+        chunkCount: params.vectors.length,
+      });
+      console.log(`   ✓ Updated in Sui: ${result.digest}`);
+    } else {
+      console.log('   ℹ️  New document, adding...');
+      result = await suiClientService.addDocument({
+        registryId: this.registryId,
+        filename: params.filename,
+        vectorBlobId: vectorBlob.blobId,
+        documentBlobId: params.documentBlobId,
+        chunkCount: params.vectors.length,
+        embeddingModel: params.embeddingModel || config.openai.embeddingModel,
+        accessPolicyId: params.accessPolicyId,
+      });
+      console.log(`   ✓ Registered in Sui: ${result.digest}`);
+    }
 
     return {
       vectorBlobId: vectorBlob.blobId,
@@ -93,8 +111,8 @@ export class SuiVectorRegistryService {
    */
   async getDocumentMetadata(filename: string): Promise<DocumentVectorMetadata | null> {
     try {
-      const result = await suiClientService.getDocumentInfo(this.registryId, filename);
-      // Parse the result (implementation depends on Sui response format)
+      await suiClientService.getDocumentInfo(this.registryId, filename);
+      // TODO: Parse the result (implementation depends on Sui response format)
       // For now, return null if not found
       return null;
     } catch (error) {
