@@ -38,16 +38,16 @@ export async function POST(request: NextRequest) {
 
     // Perform RAG query
     const startTime = Date.now();
-    const result = await ragService.query(question, topK);
+    const result = await ragService.query({ query: question, topK });
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
       answer: result.answer,
       sources: result.sources.map((source) => ({
-        filename: source.metadata.filename,
-        blobId: source.metadata.blobId,
+        filename: source.filename,
+        blobId: source.blobId,
         relevance: source.score,
-        preview: source.pageContent.substring(0, 200) + '...',
+        preview: source.content.substring(0, 200) + '...',
       })),
       metadata: {
         totalVectors: stats.totalVectors,
