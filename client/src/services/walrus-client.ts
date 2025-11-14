@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { config } from '@/services/config';
+import { config } from '@/config';
 import { WalrusBlob } from '../types/index.js';
 
 export class WalrusClient {
