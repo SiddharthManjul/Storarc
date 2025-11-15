@@ -42,10 +42,8 @@ export async function POST(request: NextRequest) {
       message: 'Document ingested successfully',
       data: {
         filename,
-        documentBlobId: result.documentBlobId,
-        vectorBlobId: result.vectorBlobId,
-        chunkCount: result.chunkCount,
-        suiTransaction: result.suiTransaction,
+        blobId: result.blobId,
+        size: result.metadata.size,
       },
       timestamp: new Date().toISOString(),
     });
