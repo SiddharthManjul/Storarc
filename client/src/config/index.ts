@@ -26,6 +26,8 @@ export const config = {
     privateKey: process.env.SUI_PRIVATE_KEY || '',
     vectorRegistryPackageId: process.env.VECTOR_REGISTRY_PACKAGE_ID || '',
     vectorRegistryObjectId: process.env.VECTOR_REGISTRY_OBJECT_ID || '',
+    chatRegistryPackageId: process.env.CHAT_REGISTRY_PACKAGE_ID || '',
+    chatRegistryObjectId: process.env.CHAT_REGISTRY_OBJECT_ID || '',
   },
 
   // Walrus Configuration
