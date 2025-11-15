@@ -43,4 +43,5 @@ next-env.d.ts
 bun.lock
 package-lock.json
 data
+temp
 .DS_Store
