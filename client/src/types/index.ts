@@ -2,7 +2,7 @@ export interface WalrusBlob {
   blobId: string;
   size: number;
   uploadedAt: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface StoredDocument {
@@ -23,13 +23,13 @@ export interface StoredDocument {
 export interface EmbeddingResult {
   embedding: number[];
   text: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface RAGQuery {
   query: string;
   topK?: number;
-  filter?: Record<string, any>;
+  filter?: Record<string, unknown>;
 }
 
 export interface RAGResult {
