@@ -14,7 +14,13 @@ export interface SerializedVectorStore {
 export interface SerializedVector {
   content: string;
   embedding: number[];
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
+}
+
+interface MemoryVector {
+  content: string;
+  embedding: number[];
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -53,7 +59,7 @@ export function deserializeVectors(data: string): SerializedVectorStore {
  * Convert MemoryVectorStore vectors to serializable format
  */
 export function convertMemoryVectorsToSerializable(
-  memoryVectors: any[]
+  memoryVectors: MemoryVector[]
 ): SerializedVector[] {
   return memoryVectors.map(vec => ({
     content: vec.content,
