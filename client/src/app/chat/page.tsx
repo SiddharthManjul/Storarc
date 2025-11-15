@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
-import { Send, FileText, Clock, Plus, MessageSquare } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Send, FileText, Clock, Plus, MessageSquare, Star, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -9,7 +10,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
+  timestamp: number;
   sources?: Array<{
     filename: string;
     blobId: string;
@@ -22,53 +23,107 @@ interface Chat {
   id: string;
   title: string;
   lastMessage: string;
-  timestamp: Date;
+  timestamp: number;
   messages: Message[];
+  isImportant?: boolean;
+  expiresAt?: number;
+  daysRemaining?: number;
 }
 
 export default function ChatPage() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [loadingChats, setLoadingChats] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock chat data - will be replaced with Walrus persistence later
-  const [chats, setChats] = useState<Chat[]>([
-    {
-      id: "1",
-      title: "Document Analysis",
-      lastMessage: "What are the main features?",
-      timestamp: new Date(Date.now() - 3600000),
-      messages: [
-        {
-          id: "1-1",
-          role: "user",
-          content: "What are the main features?",
-          timestamp: new Date(Date.now() - 3600000),
-        },
-        {
-          id: "1-2",
-          role: "assistant",
-          content: "Based on the documents, the main features include decentralized storage using Walrus, AI-powered search capabilities, and blockchain verification through Sui.",
-          timestamp: new Date(Date.now() - 3599000),
-          sources: [
-            {
-              filename: "features.txt",
-              blobId: "abc123",
-              relevance: 0.95,
-              preview: "The system provides decentralized storage...",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "2",
-      title: "Technical Overview",
-      lastMessage: "How does RAG work?",
-      timestamp: new Date(Date.now() - 7200000),
-      messages: [],
-    },
-  ]);
+  // Load all chats on mount
+  useEffect(() => {
+    loadChats();
+  }, []);
+
+  const loadChats = async () => {
+    try {
+      setLoadingChats(true);
+      const response = await fetch("/api/chat/list");
+      const data = await response.json();
+
+      if (data.success) {
+        // Convert chat metadata to UI format
+        const loadedChats: Chat[] = data.chats.map((chat: any) => ({
+          id: chat.id,
+          title: chat.title || "Untitled Chat",
+          lastMessage: "Click to load messages",
+          timestamp: chat.last_activity,
+          messages: [],
+          isImportant: chat.is_important,
+          expiresAt: chat.blob_expiry_timestamp,
+          daysRemaining: Math.floor((chat.blob_expiry_timestamp - Date.now()) / (24 * 60 * 60 * 1000)),
+        }));
+
+        setChats(loadedChats);
+      }
+    } catch (error) {
+      console.error("Error loading chats:", error);
+      setError("Failed to load chats");
+    } finally {
+      setLoadingChats(false);
+    }
+  };
+
+  // Load chat messages when selected
+  const loadChatMessages = async (chatId: string) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/chat/load", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update chat with loaded messages
+        setChats((prevChats) =>
+          prevChats.map((c) =>
+            c.id === chatId
+              ? {
+                  ...c,
+                  messages: data.chat.messages.map((msg: any) => ({
+                    ...msg,
+                    timestamp: msg.timestamp,
+                  })),
+                  lastMessage: data.chat.messages.length > 0
+                    ? data.chat.messages[data.chat.messages.length - 1].content.slice(0, 50)
+                    : "",
+                  daysRemaining: data.expiryInfo?.daysRemaining,
+                }
+              : c
+          )
+        );
+      } else {
+        setError(data.error || "Failed to load chat");
+      }
+    } catch (error) {
+      console.error("Error loading chat messages:", error);
+      setError("Failed to load chat messages");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle chat selection
+  const handleChatSelect = async (chatId: string) => {
+    setSelectedChatId(chatId);
+    const chat = chats.find((c) => c.id === chatId);
+
+    // Load messages if not already loaded
+    if (chat && chat.messages.length === 0) {
+      await loadChatMessages(chatId);
+    }
+  };
 
   const selectedChat = chats.find((chat) => chat.id === selectedChatId);
 
@@ -79,47 +134,70 @@ export default function ChatPage() {
       id: Date.now().toString(),
       role: "user",
       content: inputMessage,
-      timestamp: new Date(),
+      timestamp: Date.now(),
     };
 
     let currentChatId = selectedChatId;
-
-    // Add user message to chat
-    if (selectedChatId) {
-      // Update existing chat
-      currentChatId = selectedChatId;
-      setChats((prevChats) =>
-        prevChats.map((c) =>
-          c.id === selectedChatId
-            ? {
-                ...c,
-                messages: [...c.messages, userMessage],
-                lastMessage: inputMessage,
-                timestamp: new Date(),
-              }
-            : c
-        )
-      );
-    } else {
-      // Create new chat
-      const newChatId = Date.now().toString();
-      currentChatId = newChatId;
-      const newChat: Chat = {
-        id: newChatId,
-        title: inputMessage.slice(0, 30) + (inputMessage.length > 30 ? "..." : ""),
-        lastMessage: inputMessage,
-        timestamp: new Date(),
-        messages: [userMessage],
-      };
-      setChats((prevChats) => [newChat, ...prevChats]);
-      setSelectedChatId(newChatId);
-    }
-
     const currentInput = inputMessage;
     setInputMessage("");
     setIsLoading(true);
 
     try {
+      // Create new chat or add to existing
+      if (!selectedChatId) {
+        // Create new chat
+        const newChatId = Date.now().toString();
+        currentChatId = newChatId;
+
+        const newChat: Chat = {
+          id: newChatId,
+          title: currentInput.slice(0, 30) + (currentInput.length > 30 ? "..." : ""),
+          lastMessage: currentInput,
+          timestamp: Date.now(),
+          messages: [userMessage],
+          isImportant: false,
+        };
+
+        setChats((prevChats) => [newChat, ...prevChats]);
+        setSelectedChatId(newChatId);
+
+        // Save to backend
+        await fetch("/api/chat/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: newChatId,
+            title: newChat.title,
+            initialMessage: userMessage,
+          }),
+        });
+      } else {
+        // Add message to existing chat
+        setChats((prevChats) =>
+          prevChats.map((c) =>
+            c.id === selectedChatId
+              ? {
+                  ...c,
+                  messages: [...c.messages, userMessage],
+                  lastMessage: currentInput,
+                  timestamp: Date.now(),
+                }
+              : c
+          )
+        );
+
+        // Save message to backend
+        await fetch("/api/chat/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: selectedChatId,
+            message: userMessage,
+          }),
+        });
+      }
+
+      // Query RAG system for response
       const response = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,58 +206,37 @@ export default function ChatPage() {
 
       const data = await response.json();
 
-      if (!response.ok) {
-        // Handle error
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.error === "No documents in vector store"
-            ? "I don&apos;t have any documents in my knowledge base yet. Please upload some documents first to start querying."
-            : "I don&apos;t have the context required to answer this question. Please try uploading relevant documents first.",
-          timestamp: new Date(),
-        };
-
-        setChats((prevChats) =>
-          prevChats.map((c) =>
-            c.id === currentChatId
-              ? { ...c, messages: [...c.messages, errorMessage] }
-              : c
-          )
-        );
-      } else {
-        // Success - add assistant response
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.answer,
-          timestamp: new Date(),
-          sources: data.sources,
-        };
-
-        setChats((prevChats) =>
-          prevChats.map((c) =>
-            c.id === currentChatId
-              ? { ...c, messages: [...c.messages, assistantMessage] }
-              : c
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Query error:", error);
-      const errorMessage: Message = {
+      const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Sorry, I encountered an error while processing your question. Please try again.",
-        timestamp: new Date(),
+        content: data.answer || data.error || "Sorry, I couldn't process that.",
+        timestamp: Date.now(),
+        sources: data.sources,
       };
 
+      // Update UI with assistant response
       setChats((prevChats) =>
         prevChats.map((c) =>
           c.id === currentChatId
-            ? { ...c, messages: [...c.messages, errorMessage] }
+            ? { ...c, messages: [...c.messages, assistantMessage] }
             : c
         )
       );
+
+      // Save assistant message to backend
+      if (currentChatId) {
+        await fetch("/api/chat/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: currentChatId,
+            message: assistantMessage,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setError("Failed to send message");
     } finally {
       setIsLoading(false);
     }
@@ -188,6 +245,56 @@ export default function ChatPage() {
   const handleNewChat = () => {
     setSelectedChatId(null);
     setInputMessage("");
+  };
+
+  const toggleImportant = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const chat = chats.find((c) => c.id === chatId);
+    if (!chat) return;
+
+    const newImportantStatus = !chat.isImportant;
+
+    // Optimistic update
+    setChats((prevChats) =>
+      prevChats.map((c) =>
+        c.id === chatId ? { ...c, isImportant: newImportantStatus } : c
+      )
+    );
+
+    // Update backend
+    try {
+      await fetch("/api/chat/importance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId,
+          isImportant: newImportantStatus,
+        }),
+      });
+    } catch (error) {
+      console.error("Error updating importance:", error);
+      // Revert on error
+      setChats((prevChats) =>
+        prevChats.map((c) =>
+          c.id === chatId ? { ...c, isImportant: !newImportantStatus } : c
+        )
+      );
+    }
+  };
+
+  const formatTimestamp = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return new Date(timestamp).toLocaleDateString();
   };
 
   return (
@@ -207,52 +314,87 @@ export default function ChatPage() {
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-2 space-y-1">
-            {chats.map((chat) => (
-              <button
-                key={chat.id}
-                onClick={() => setSelectedChatId(chat.id)}
-                className={cn(
-                  "w-full text-left p-3 rounded-lg transition-all duration-200 group",
-                  selectedChatId === chat.id
-                    ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <MessageSquare className={cn(
-                    "h-5 w-5 mt-0.5 shrink-0",
+          {loadingChats ? (
+            <div className="p-4 text-center text-gray-500">Loading chats...</div>
+          ) : chats.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              No chats yet. Start a new conversation!
+            </div>
+          ) : (
+            <div className="p-2 space-y-1">
+              {chats.map((chat) => (
+                <button
+                  key={chat.id}
+                  onClick={() => handleChatSelect(chat.id)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-lg transition-all duration-200 group",
                     selectedChatId === chat.id
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-gray-400"
-                  )} />
-                  <div className="flex-1 min-w-0">
-                    <h3 className={cn(
-                      "font-medium text-sm truncate",
-                      selectedChatId === chat.id
-                        ? "text-blue-900 dark:text-blue-100"
-                        : "text-gray-900 dark:text-gray-100"
-                    )}>
-                      {chat.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
-                      {chat.lastMessage}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatTimestamp(chat.timestamp)}</span>
+                      ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <MessageSquare
+                      className={cn(
+                        "h-5 w-5 mt-0.5 shrink-0",
+                        selectedChatId === chat.id
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-gray-400"
+                      )}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3
+                          className={cn(
+                            "font-medium text-sm truncate",
+                            selectedChatId === chat.id
+                              ? "text-blue-900 dark:text-blue-100"
+                              : "text-gray-900 dark:text-gray-100"
+                          )}
+                        >
+                          {chat.title}
+                        </h3>
+                        <div
+                          onClick={(e) => toggleImportant(chat.id, e)}
+                          className="shrink-0 cursor-pointer"
+                        >
+                          <Star
+                            className={cn(
+                              "h-4 w-4 transition-colors",
+                              chat.isImportant
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-gray-300 hover:text-yellow-400"
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                        {chat.lastMessage}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatTimestamp(chat.timestamp)}</span>
+                        </div>
+                        {chat.daysRemaining !== undefined && chat.daysRemaining < 7 && (
+                          <div className="flex items-center gap-1 text-xs text-orange-500">
+                            <AlertCircle className="h-3 w-3" />
+                            <span>{chat.daysRemaining}d left</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-800">
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Chat history stored on Walrus
+            Chat history stored on Walrus + Sui
           </p>
         </div>
       </div>
@@ -263,12 +405,28 @@ export default function ChatPage() {
           <>
             {/* Chat Header */}
             <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                {selectedChat.title}
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {selectedChat.messages.length} messages
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    {selectedChat.title}
+                  </h1>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {selectedChat.messages.length} messages
+                  </p>
+                </div>
+                {selectedChat.daysRemaining !== undefined && (
+                  <div
+                    className={cn(
+                      "px-3 py-1 rounded-full text-xs font-medium",
+                      selectedChat.daysRemaining < 7
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-green-100 text-green-700"
+                    )}
+                  >
+                    Expires in {selectedChat.daysRemaining} days
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Messages */}
@@ -337,9 +495,18 @@ export default function ChatPage() {
                 >
                   <div className="max-w-3xl rounded-2xl px-6 py-4 bg-gray-100 dark:bg-gray-800">
                     <div className="flex gap-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <div
+                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        style={{ animationDelay: "0ms" }}
+                      />
+                      <div
+                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <div
+                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        style={{ animationDelay: "300ms" }}
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -365,12 +532,19 @@ export default function ChatPage() {
 
         {/* Input Area - Always visible */}
         <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4">
+          {error && (
+            <div className="max-w-4xl mx-auto mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {error}
+            </div>
+          )}
           <div className="max-w-4xl mx-auto flex gap-4">
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !e.shiftKey && handleSendMessage()
+              }
               placeholder="Ask a question about your documents..."
               className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isLoading}
@@ -388,18 +562,4 @@ export default function ChatPage() {
       </div>
     </div>
   );
-}
-
-function formatTimestamp(date: Date): string {
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
 }
