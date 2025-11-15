@@ -82,28 +82,40 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
 
+    let currentChatId = selectedChatId;
+
     // Add user message to chat
-    if (selectedChat) {
-      const updatedChat = {
-        ...selectedChat,
-        messages: [...selectedChat.messages, userMessage],
-        lastMessage: inputMessage,
-        timestamp: new Date(),
-      };
-      setChats(chats.map((c) => (c.id === selectedChatId ? updatedChat : c)));
+    if (selectedChatId) {
+      // Update existing chat
+      currentChatId = selectedChatId;
+      setChats((prevChats) =>
+        prevChats.map((c) =>
+          c.id === selectedChatId
+            ? {
+                ...c,
+                messages: [...c.messages, userMessage],
+                lastMessage: inputMessage,
+                timestamp: new Date(),
+              }
+            : c
+        )
+      );
     } else {
       // Create new chat
+      const newChatId = Date.now().toString();
+      currentChatId = newChatId;
       const newChat: Chat = {
-        id: Date.now().toString(),
+        id: newChatId,
         title: inputMessage.slice(0, 30) + (inputMessage.length > 30 ? "..." : ""),
         lastMessage: inputMessage,
         timestamp: new Date(),
         messages: [userMessage],
       };
-      setChats([newChat, ...chats]);
-      setSelectedChatId(newChat.id);
+      setChats((prevChats) => [newChat, ...prevChats]);
+      setSelectedChatId(newChatId);
     }
 
+    const currentInput = inputMessage;
     setInputMessage("");
     setIsLoading(true);
 
@@ -111,7 +123,7 @@ export default function ChatPage() {
       const response = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: inputMessage, topK: 4 }),
+        body: JSON.stringify({ question: currentInput, topK: 4 }),
       });
 
       const data = await response.json();
@@ -127,12 +139,13 @@ export default function ChatPage() {
           timestamp: new Date(),
         };
 
-        const currentChat = chats.find((c) => c.id === selectedChatId) || chats[0];
-        const updatedChat = {
-          ...currentChat,
-          messages: [...currentChat.messages, errorMessage],
-        };
-        setChats(chats.map((c) => (c.id === currentChat.id ? updatedChat : c)));
+        setChats((prevChats) =>
+          prevChats.map((c) =>
+            c.id === currentChatId
+              ? { ...c, messages: [...c.messages, errorMessage] }
+              : c
+          )
+        );
       } else {
         // Success - add assistant response
         const assistantMessage: Message = {
@@ -143,12 +156,13 @@ export default function ChatPage() {
           sources: data.sources,
         };
 
-        const currentChat = chats.find((c) => c.id === selectedChatId) || chats[0];
-        const updatedChat = {
-          ...currentChat,
-          messages: [...currentChat.messages, assistantMessage],
-        };
-        setChats(chats.map((c) => (c.id === currentChat.id ? updatedChat : c)));
+        setChats((prevChats) =>
+          prevChats.map((c) =>
+            c.id === currentChatId
+              ? { ...c, messages: [...c.messages, assistantMessage] }
+              : c
+          )
+        );
       }
     } catch (error) {
       console.error("Query error:", error);
@@ -159,12 +173,13 @@ export default function ChatPage() {
         timestamp: new Date(),
       };
 
-      const currentChat = chats.find((c) => c.id === selectedChatId) || chats[0];
-      const updatedChat = {
-        ...currentChat,
-        messages: [...currentChat.messages, errorMessage],
-      };
-      setChats(chats.map((c) => (c.id === currentChat.id ? updatedChat : c)));
+      setChats((prevChats) =>
+        prevChats.map((c) =>
+          c.id === currentChatId
+            ? { ...c, messages: [...c.messages, errorMessage] }
+            : c
+        )
+      );
     } finally {
       setIsLoading(false);
     }
@@ -330,50 +345,46 @@ export default function ChatPage() {
                 </motion.div>
               )}
             </div>
-
-            {/* Input Area */}
-            <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4">
-              <div className="max-w-4xl mx-auto flex gap-4">
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                  placeholder="Ask a question about your documents..."
-                  className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isLoading}
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!inputMessage.trim() || isLoading}
-                  className="px-6 py-3 rounded-lg bg-linear-to-r from-blue-500 to-purple-600 text-white font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Send className="h-5 w-5" />
-                  Send
-                </button>
+          </>
+        ) : (
+          <>
+            {/* Empty State */}
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <MessageSquare className="h-16 w-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Welcome to Storarc Chat
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                  Start typing below to begin a new conversation
+                </p>
               </div>
             </div>
           </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <MessageSquare className="h-16 w-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Welcome to Storarc Chat
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">
-                Select a chat or start a new conversation
-              </p>
-              <button
-                onClick={handleNewChat}
-                className="px-6 py-3 rounded-lg bg-linear-to-r from-blue-500 to-purple-600 text-white font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 inline-flex items-center gap-2"
-              >
-                <Plus className="h-5 w-5" />
-                Start New Chat
-              </button>
-            </div>
-          </div>
         )}
+
+        {/* Input Area - Always visible */}
+        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4">
+          <div className="max-w-4xl mx-auto flex gap-4">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+              placeholder="Ask a question about your documents..."
+              className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim() || isLoading}
+              className="px-6 py-3 rounded-lg bg-linear-to-r from-blue-500 to-purple-600 text-white font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Send className="h-5 w-5" />
+              Send
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
