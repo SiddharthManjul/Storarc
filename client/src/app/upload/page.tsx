@@ -14,8 +14,9 @@ import {
   SUPPORTED_FORMATS,
   getFormatName
 } from "@/lib/supported-formats";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
-export default function UploadPage() {
+function UploadPageContent() {
   const [, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -304,5 +305,13 @@ export default function UploadPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <ProtectedRoute>
+      <UploadPageContent />
+    </ProtectedRoute>
   );
 }

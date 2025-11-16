@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { Send, FileText, Clock, Plus, MessageSquare, Star, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 interface Message {
   id: string;
@@ -30,7 +31,7 @@ interface Chat {
   daysRemaining?: number;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -561,5 +562,13 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <ProtectedRoute>
+      <ChatPageContent />
+    </ProtectedRoute>
   );
 }
