@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ChatService } from "@/services/chat-service";
+import { getUserFromRequest } from "@/lib/auth-helpers";
+import { getUserChatService } from "@/lib/chat-api-helpers";
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const user = getUserFromRequest(request);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Authentication required. Please login first." },
+        { status: 401 }
+      );
+    }
+
     const { chatId, isImportant } = await request.json();
 
     if (!chatId || typeof isImportant !== "boolean") {
@@ -12,7 +23,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const chatService = new ChatService();
+    // Get user-specific chat service
+    const chatService = await getUserChatService(user.userAddr);
 
     await chatService.setChatImportance(chatId, isImportant);
 
