@@ -5,14 +5,18 @@
  */
 
 import { WalrusClient } from './walrus-client';
+import { metadataRegistry } from './metadata-registry';
 
 export interface ChatMetadata {
   chatId: string;
   title: string;
   created_at: number;
   last_activity: number;
+  last_renewal: number; // When blob was last renewed
   message_count: number;
   messages_blob_id: string;
+  blob_expires_at: number; // Expiration timestamp
+  current_epochs: number; // Current epoch duration
   is_important: boolean;
   owner: string;
 }
@@ -22,9 +26,6 @@ export interface UserChatIndex {
   chats: ChatMetadata[];
   lastUpdated: number;
 }
-
-// Server-side cache for blob IDs (in-memory)
-const serverCache = new Map<string, string>();
 
 export class ChatMetadataStore {
   private walrusClient: WalrusClient;
@@ -37,16 +38,17 @@ export class ChatMetadataStore {
   }
 
   /**
-   * Get user's chat index blob ID from cache
-   * Uses localStorage in browser, in-memory cache on server
+   * Get user's chat index blob ID with multi-layer fallback
+   * Server: Cache → Sui blockchain → null
+   * Client: localStorage only (for fast access)
    */
-  private getUserIndexBlobId(userAddr: string): string | null {
+  private async getUserIndexBlobId(userAddr: string): Promise<string | null> {
     try {
       if (this.isServer) {
-        // Server-side: use in-memory cache
-        return serverCache.get(userAddr) || null;
+        // Server-side: use metadata registry with Sui fallback
+        return await metadataRegistry.getMetadataBlobId(userAddr);
       } else {
-        // Client-side: use localStorage
+        // Client-side: use localStorage only
         const stored = localStorage.getItem(`${this.cacheKey}_${userAddr}`);
         return stored ? JSON.parse(stored).blobId : null;
       }
@@ -56,14 +58,15 @@ export class ChatMetadataStore {
   }
 
   /**
-   * Store user's chat index blob ID in cache
-   * Uses localStorage in browser, in-memory cache on server
+   * Store user's chat index blob ID in persistent storage
+   * Server: Sui blockchain + cache
+   * Client: localStorage
    */
-  private setUserIndexBlobId(userAddr: string, blobId: string): void {
+  private async setUserIndexBlobId(userAddr: string, blobId: string): Promise<void> {
     try {
       if (this.isServer) {
-        // Server-side: use in-memory cache
-        serverCache.set(userAddr, blobId);
+        // Server-side: store on Sui blockchain (survives restarts)
+        await metadataRegistry.setMetadataBlobId(userAddr, blobId);
       } else {
         // Client-side: use localStorage
         localStorage.setItem(`${this.cacheKey}_${userAddr}`, JSON.stringify({ blobId }));
@@ -77,7 +80,7 @@ export class ChatMetadataStore {
    * Load user's chat index from Walrus
    */
   async loadUserIndex(userAddr: string): Promise<UserChatIndex> {
-    const blobId = this.getUserIndexBlobId(userAddr);
+    const blobId = await this.getUserIndexBlobId(userAddr);
 
     if (!blobId) {
       // No index exists yet, return empty
@@ -111,8 +114,8 @@ export class ChatMetadataStore {
     const jsonData = JSON.stringify(index);
     const blob = await this.walrusClient.uploadBlob(Buffer.from(jsonData));
 
-    // Cache the blob ID
-    this.setUserIndexBlobId(index.userAddr, blob.blobId);
+    // Cache the blob ID (stores on Sui if server-side)
+    await this.setUserIndexBlobId(index.userAddr, blob.blobId);
 
     return blob.blobId;
   }
@@ -207,8 +210,8 @@ export class ChatMetadataStore {
    */
   clearCache(): void {
     if (this.isServer) {
-      // Server-side: clear in-memory cache
-      serverCache.clear();
+      // Server-side: clear metadata registry cache
+      metadataRegistry.clearCache();
     } else {
       // Client-side: clear localStorage
       const keys = Object.keys(localStorage);
