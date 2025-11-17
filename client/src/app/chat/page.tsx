@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Send, FileText, Clock, Plus, MessageSquare, Star, AlertCircle } from "lucide-react";
+import { Send, FileText, Clock, Plus, MessageSquare, Star, AlertCircle, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -262,6 +262,32 @@ function ChatPageContent() {
     }
   };
 
+  const deleteChat = async (chatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!confirm("Are you sure you want to delete this chat? This action cannot be undone.")) {
+      return;
+    }
+
+    // Optimistic removal
+    setChats((prevChats) => prevChats.filter((c) => c.id !== chatId));
+
+    // If deleted chat was selected, clear selection
+    if (selectedChatId === chatId) {
+      setSelectedChatId(null);
+    }
+
+    // Delete from backend
+    try {
+      await apiPost("/api/chat/delete", { chatId });
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      setError("Failed to delete chat");
+      // Reload chats to restore state
+      loadChats();
+    }
+  };
+
   const formatTimestamp = (timestamp: number): string => {
     const now = Date.now();
     const diff = now - timestamp;
@@ -333,18 +359,30 @@ function ChatPageContent() {
                         >
                           {chat.title}
                         </h3>
-                        <div
-                          onClick={(e) => toggleImportant(chat.id, e)}
-                          className="shrink-0 cursor-pointer"
-                        >
-                          <Star
-                            className={cn(
-                              "h-4 w-4 transition-colors",
-                              chat.isImportant
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300 hover:text-yellow-400"
-                            )}
-                          />
+                        <div className="flex items-center gap-1">
+                          <div
+                            onClick={(e) => toggleImportant(chat.id, e)}
+                            className="shrink-0 cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                            title={chat.isImportant ? "Unmark as important" : "Mark as important"}
+                          >
+                            <Star
+                              className={cn(
+                                "h-4 w-4 transition-colors",
+                                chat.isImportant
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-gray-300 hover:text-yellow-400"
+                              )}
+                            />
+                          </div>
+                          <div
+                            onClick={(e) => deleteChat(chat.id, e)}
+                            className="shrink-0 cursor-pointer p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                            title="Delete chat"
+                          >
+                            <Trash2
+                              className="h-4 w-4 text-gray-400 hover:text-red-600 transition-colors"
+                            />
+                          </div>
                         </div>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
