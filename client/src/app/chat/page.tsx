@@ -6,6 +6,7 @@ import { Send, FileText, Clock, Plus, MessageSquare, Star, AlertCircle } from "l
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { apiGet, apiPost } from "@/lib/api-client";
 
 interface Message {
   id: string;
@@ -47,8 +48,7 @@ function ChatPageContent() {
   const loadChats = async () => {
     try {
       setLoadingChats(true);
-      const response = await fetch("/api/chat/list");
-      const data = await response.json();
+      const data = await apiGet("/api/chat/list");
 
       if (data.success) {
         // Convert chat metadata to UI format
@@ -67,7 +67,7 @@ function ChatPageContent() {
       }
     } catch (error) {
       console.error("Error loading chats:", error);
-      setError("Failed to load chats");
+      setError(error instanceof Error ? error.message : "Failed to load chats");
     } finally {
       setLoadingChats(false);
     }
@@ -77,13 +77,7 @@ function ChatPageContent() {
   const loadChatMessages = async (chatId: string) => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/chat/load", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId }),
-      });
-
-      const data = await response.json();
+      const data = await apiPost("/api/chat/load", { chatId });
 
       if (data.success) {
         // Update chat with loaded messages
@@ -109,7 +103,7 @@ function ChatPageContent() {
       }
     } catch (error) {
       console.error("Error loading chat messages:", error);
-      setError("Failed to load chat messages");
+      setError(error instanceof Error ? error.message : "Failed to load chat messages");
     } finally {
       setIsLoading(false);
     }
@@ -163,14 +157,10 @@ function ChatPageContent() {
         setSelectedChatId(newChatId);
 
         // Save to backend
-        await fetch("/api/chat/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatId: newChatId,
-            title: newChat.title,
-            initialMessage: userMessage,
-          }),
+        await apiPost("/api/chat/create", {
+          chatId: newChatId,
+          title: newChat.title,
+          initialMessage: userMessage,
         });
       } else {
         // Add message to existing chat
@@ -188,13 +178,9 @@ function ChatPageContent() {
         );
 
         // Save message to backend
-        await fetch("/api/chat/message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatId: selectedChatId,
-            message: userMessage,
-          }),
+        await apiPost("/api/chat/message", {
+          chatId: selectedChatId,
+          message: userMessage,
         });
       }
 
@@ -226,13 +212,9 @@ function ChatPageContent() {
 
       // Save assistant message to backend
       if (currentChatId) {
-        await fetch("/api/chat/message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatId: currentChatId,
-            message: assistantMessage,
-          }),
+        await apiPost("/api/chat/message", {
+          chatId: currentChatId,
+          message: assistantMessage,
         });
       }
     } catch (error) {
@@ -265,13 +247,9 @@ function ChatPageContent() {
 
     // Update backend
     try {
-      await fetch("/api/chat/importance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId,
-          isImportant: newImportantStatus,
-        }),
+      await apiPost("/api/chat/importance", {
+        chatId,
+        isImportant: newImportantStatus,
       });
     } catch (error) {
       console.error("Error updating importance:", error);
