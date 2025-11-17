@@ -1,5 +1,6 @@
 import { ChatRegistryClient, MessageMetadata, Chat } from "./chat-registry-client";
 import { WalrusClient } from "./walrus-client";
+import { chatMetadataStore, ChatMetadata } from "./chat-metadata-store";
 import crypto from "crypto";
 
 export interface Message {
@@ -25,11 +26,37 @@ export class ChatService {
   private chatClient: ChatRegistryClient;
   private walrusClient: WalrusClient;
   private registryId: string;
+  private userAddress: string | null;
 
-  constructor(registryId?: string) {
+  constructor(registryId?: string, userAddress?: string) {
     this.chatClient = new ChatRegistryClient();
     this.walrusClient = new WalrusClient();
     this.registryId = registryId || process.env.CHAT_REGISTRY_OBJECT_ID || "";
+    this.userAddress = userAddress || null;
+  }
+
+  /**
+   * Set registry ID for user-specific operations
+   */
+  setRegistryId(registryId: string): void {
+    this.registryId = registryId;
+  }
+
+  /**
+   * Set user address for user-specific operations
+   */
+  setUserAddress(userAddress: string): void {
+    this.userAddress = userAddress;
+  }
+
+  /**
+   * Get registry ID
+   */
+  getRegistryId(): string {
+    if (!this.registryId) {
+      throw new Error("Registry ID not set. Please authenticate first.");
+    }
+    return this.registryId;
   }
 
   /**
@@ -43,7 +70,7 @@ export class ChatService {
    * Add funds to renewal budget
    */
   async addRenewalBudget(amountInSui: number): Promise<void> {
-    await this.chatClient.addRenewalBudget(this.registryId, amountInSui);
+    await this.chatClient.addRenewalBudget(this.getRegistryId(), amountInSui);
   }
 
   /**
@@ -54,6 +81,10 @@ export class ChatService {
     title: string,
     initialMessage: Message
   ): Promise<void> {
+    if (!this.userAddress) {
+      throw new Error("User address is required for chat operations");
+    }
+
     const chatData: ChatData = {
       chatId,
       title,
@@ -64,22 +95,45 @@ export class ChatService {
     const jsonData = JSON.stringify(chatData);
     const walrusBlob = await this.walrusClient.uploadBlob(Buffer.from(jsonData));
 
-    // Register on Sui
-    const epochs = 30; // Default for new chats
-    await this.chatClient.createChat(
-      this.registryId,
+    // Store metadata in Walrus-based index
+    const metadata: ChatMetadata = {
       chatId,
       title,
-      walrusBlob.blobId, // Extract blobId string from WalrusBlob object
-      epochs,
-      chatData.messages.length
-    );
+      created_at: Date.now(),
+      last_activity: Date.now(),
+      message_count: 1,
+      messages_blob_id: walrusBlob.blobId,
+      is_important: false,
+      owner: this.userAddress,
+    };
+
+    await chatMetadataStore.addChatToIndex(this.userAddress, metadata);
+
+    // Also register on Sui (optional for MVP, can be removed if causing issues)
+    try {
+      const epochs = 30; // Default for new chats
+      await this.chatClient.createChat(
+        this.getRegistryId(),
+        chatId,
+        title,
+        walrusBlob.blobId,
+        epochs,
+        chatData.messages.length
+      );
+    } catch (error) {
+      console.warn('Sui registration failed (non-critical):', error);
+      // Continue anyway - metadata is in Walrus
+    }
   }
 
   /**
    * Add a message to existing chat
    */
   async addMessage(chatId: string, newMessage: Message): Promise<void> {
+    if (!this.userAddress) {
+      throw new Error("User address is required for chat operations");
+    }
+
     // 1. Download current chat from Walrus
     const chat = await this.loadChat(chatId);
 
@@ -90,24 +144,40 @@ export class ChatService {
     const jsonData = JSON.stringify(chat);
     const walrusBlob = await this.walrusClient.uploadBlob(Buffer.from(jsonData));
 
-    // 4. Update Sui registry
-    const epochs = 30; // Standard epochs for active chats
-    await this.chatClient.addMessage(
-      this.registryId,
-      chatId,
-      newMessage.id,
-      newMessage.role,
-      walrusBlob.blobId, // Extract blobId string
-      epochs
-    );
+    // 4. Update metadata in Walrus index
+    await chatMetadataStore.updateChatInIndex(this.userAddress, chatId, {
+      messages_blob_id: walrusBlob.blobId,
+      message_count: chat.messages.length,
+      last_activity: Date.now(),
+    });
+
+    // 5. Update Sui registry (optional)
+    try {
+      const epochs = 30; // Standard epochs for active chats
+      await this.chatClient.addMessage(
+        this.getRegistryId(),
+        chatId,
+        newMessage.id,
+        newMessage.role,
+        walrusBlob.blobId,
+        epochs
+      );
+    } catch (error) {
+      console.warn('Sui update failed (non-critical):', error);
+      // Continue anyway - metadata is updated in Walrus
+    }
   }
 
   /**
    * Load chat messages from Walrus
    */
   async loadChat(chatId: string): Promise<ChatData> {
-    // Get chat metadata from Sui
-    const chatMeta = await this.chatClient.getChat(this.registryId, chatId);
+    if (!this.userAddress) {
+      throw new Error("User address is required for chat operations");
+    }
+
+    // Get chat metadata from Walrus index
+    const chatMeta = await chatMetadataStore.getChatMetadata(this.userAddress, chatId);
 
     if (!chatMeta) {
       throw new Error(`Chat not found: ${chatId}`);
@@ -126,10 +196,28 @@ export class ChatService {
    * Get all chats for user
    */
   async getAllChats(): Promise<Chat[]> {
-    const chats = await this.chatClient.getAllChats(this.registryId);
+    if (!this.userAddress) {
+      throw new Error("User address is required for chat operations");
+    }
 
-    // Sort by last_activity (most recent first)
-    chats.sort((a, b) => b.last_activity - a.last_activity);
+    // Get chats from Walrus metadata store
+    const chatMetadataList = await chatMetadataStore.getAllChats(this.userAddress);
+
+    // Convert to Chat format
+    const chats: Chat[] = chatMetadataList.map(meta => ({
+      id: meta.chatId,
+      title: meta.title,
+      created_at: meta.created_at,
+      last_activity: meta.last_activity,
+      message_count: meta.message_count,
+      messages_blob_id: meta.messages_blob_id,
+      blob_uploaded_at: meta.created_at,
+      blob_expiry_timestamp: meta.created_at + (30 * 24 * 60 * 60 * 1000), // 30 days
+      blob_epochs: 30,
+      is_important: meta.is_important,
+      owner: meta.owner,
+      messages: [], // Messages loaded separately
+    }));
 
     return chats;
   }
@@ -138,18 +226,30 @@ export class ChatService {
    * Mark chat as important/unimportant
    */
   async setChatImportance(chatId: string, isImportant: boolean): Promise<void> {
-    await this.chatClient.setChatImportance(
-      this.registryId,
-      chatId,
-      isImportant
-    );
+    if (!this.userAddress) {
+      throw new Error("User address is required for chat operations");
+    }
+
+    // Update in Walrus metadata store
+    await chatMetadataStore.setChatImportance(this.userAddress, chatId, isImportant);
+
+    // Also update Sui registry (optional)
+    try {
+      await this.chatClient.setChatImportance(
+        this.getRegistryId(),
+        chatId,
+        isImportant
+      );
+    } catch (error) {
+      console.warn('Sui importance update failed (non-critical):', error);
+    }
   }
 
   /**
    * Check and renew chat if needed (lazy renewal)
    */
   async checkAndRenewChat(chatId: string): Promise<boolean> {
-    const chatMeta = await this.chatClient.getChat(this.registryId, chatId);
+    const chatMeta = await this.chatClient.getChat(this.getRegistryId(), chatId);
 
     if (!chatMeta) {
       return false;
@@ -174,7 +274,7 @@ export class ChatService {
 
     // Renew on Sui
     await this.chatClient.renewChat(
-      this.registryId,
+      this.getRegistryId(),
       chatId,
       walrusBlob.blobId, // Extract blobId string
       epochs
@@ -188,14 +288,26 @@ export class ChatService {
    * Update last activity timestamp
    */
   async updateLastActivity(chatId: string): Promise<void> {
-    await this.chatClient.updateLastActivity(this.registryId, chatId);
+    await this.chatClient.updateLastActivity(this.getRegistryId(), chatId);
   }
 
   /**
    * Delete chat
    */
   async deleteChat(chatId: string): Promise<void> {
-    await this.chatClient.deleteChat(this.registryId, chatId);
+    if (!this.userAddress) {
+      throw new Error("User address is required for chat operations");
+    }
+
+    // Delete from Walrus metadata store
+    await chatMetadataStore.deleteChatFromIndex(this.userAddress, chatId);
+
+    // Also delete from Sui registry (optional)
+    try {
+      await this.chatClient.deleteChat(this.getRegistryId(), chatId);
+    } catch (error) {
+      console.warn('Sui deletion failed (non-critical):', error);
+    }
   }
 
   /**
@@ -203,7 +315,7 @@ export class ChatService {
    */
   async isChatAccessible(chatId: string): Promise<boolean> {
     try {
-      const chatMeta = await this.chatClient.getChat(this.registryId, chatId);
+      const chatMeta = await this.chatClient.getChat(this.getRegistryId(), chatId);
 
       if (!chatMeta) {
         return false;
@@ -234,7 +346,7 @@ export class ChatService {
     daysRemaining: number;
     needsRenewal: boolean;
   } | null> {
-    const chatMeta = await this.chatClient.getChat(this.registryId, chatId);
+    const chatMeta = await this.chatClient.getChat(this.getRegistryId(), chatId);
 
     if (!chatMeta) {
       return null;
@@ -255,7 +367,7 @@ export class ChatService {
    * Get renewal budget balance
    */
   async getRenewalBudget(): Promise<number> {
-    const registry = await this.chatClient.getRegistry(this.registryId);
+    const registry = await this.chatClient.getRegistry(this.getRegistryId());
     return registry ? registry.renewal_budget : 0;
   }
 
@@ -270,6 +382,6 @@ export class ChatService {
    * Subscribe to chat events
    */
   async subscribeToEvents(onEvent: (event: any) => void): Promise<() => void> {
-    return await this.chatClient.subscribeToEvents(this.registryId, onEvent);
+    return await this.chatClient.subscribeToEvents(this.getRegistryId(), onEvent);
   }
 }
