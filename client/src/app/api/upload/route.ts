@@ -4,12 +4,24 @@ import { join } from 'path';
 import { documentLoader } from '@/services/document-loader';
 import { ragService } from '@/services/rag-service';
 import { vectorStoreService } from '@/services/vector-store';
+import { getUserFromRequest } from '@/lib/auth-helpers';
+import { documentMetadataStore } from '@/services/document-metadata-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const user = getUserFromRequest(request);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please login first.' },
+        { status: 401 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -69,8 +81,31 @@ export async function POST(request: NextRequest) {
       // Clean up temporary file
       await unlink(tempFilePath);
 
+      // Store document metadata for persistence
+      const documentId = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+      // Calculate chunk count from document length
+      const chunkSize = 1000;
+      const estimatedChunks = Math.ceil(content.length / chunkSize);
+
+      await documentMetadataStore.addDocumentToIndex(user.userAddr, {
+        documentId,
+        filename: result.filename,
+        fileType: metadata.fileType,
+        size: result.metadata.size,
+        pageCount: metadata.pageCount,
+        blobId: result.blobId,
+        uploadedAt: Date.now(),
+        lastAccessed: Date.now(),
+        chunkCount: estimatedChunks,
+        owner: user.userAddr,
+      });
+
+      console.log(`[Document Stored] ${result.filename} for user ${user.userAddr.slice(0, 10)}...`);
+
       return NextResponse.json({
         success: true,
+        documentId,
         blobId: result.blobId,
         filename: result.filename,
         fileType: metadata.fileType,
