@@ -8,7 +8,7 @@ import { SuiClient } from '@mysten/sui/client';
 
 // Constants
 const DOCUMENT_REGISTRY_PACKAGE_ID = process.env.DOCUMENT_REGISTRY_PACKAGE_ID ||
-  '0xdd4035b1b2b0f209671b7bef2c4de4eee33d1ba22c26c0bd7be083861572daf9';
+  '0xcd6c26bba8af6837ed38d40e761adb8f795ba65f1a15f735c8eb0cc35b2b1b40';
 
 export interface DocumentUploadParams {
   file: File;
