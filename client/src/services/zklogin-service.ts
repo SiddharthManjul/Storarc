@@ -4,9 +4,11 @@
  */
 
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { generateNonce, generateRandomness } from '@mysten/sui/zklogin';
+import { generateNonce, generateRandomness, getZkLoginSignature, getExtendedEphemeralPublicKey } from '@mysten/sui/zklogin';
 import { SuiClient } from '@mysten/sui/client';
+import { Transaction } from '@mysten/sui/transactions';
 import { ZKLOGIN_CONFIG } from '@/config/zklogin';
+import { jwtToAddress } from '@mysten/zklogin';
 
 export interface ZkLoginSession {
   ephemeralPrivateKey: string;
@@ -124,7 +126,11 @@ export class ZkLoginService {
       localStorage.setItem('zklogin_jwt', jwt);
       localStorage.setItem('zklogin_salt', salt);
 
-      // Clear session storage
+      // Keep session data in localStorage for transaction signing
+      // (We need the ephemeral keypair to sign transactions)
+      localStorage.setItem('zklogin_session', JSON.stringify(session));
+
+      // Clear temporary session storage (we've moved it to localStorage)
       sessionStorage.removeItem('zklogin_session');
 
       return account;
@@ -164,6 +170,7 @@ export class ZkLoginService {
     localStorage.removeItem('zklogin_account');
     localStorage.removeItem('zklogin_jwt');
     localStorage.removeItem('zklogin_salt');
+    localStorage.removeItem('zklogin_session');
     sessionStorage.removeItem('zklogin_session');
   }
 
@@ -200,22 +207,191 @@ export class ZkLoginService {
   }
 
   /**
-   * Get zkLogin Sui address
-   * This is a placeholder - in production, you would derive this properly
+   * Get zkLogin Sui address using proper zkLogin derivation
    */
   private async getZkLoginAddress(jwt: string, salt: string): Promise<string> {
-    // For development: create a deterministic address
-    // In production: use proper zkLogin address derivation
-    const jwtPayload = this.decodeJWT(jwt);
-    const combined = `${jwtPayload.sub}_${salt}`;
-    const encoder = new TextEncoder();
-    const data = encoder.encode(combined);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const addressHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Use the official zkLogin address derivation
+    return jwtToAddress(jwt, salt);
+  }
 
-    // Format as Sui address (0x + 64 hex chars)
-    return '0x' + addressHex;
+  /**
+   * Get zkProof from Mysten's prover service
+   */
+  private async getZkProof(
+    jwt: string,
+    ephemeralPublicKey: string,
+    maxEpoch: number,
+    randomness: string,
+    userSalt: string
+  ): Promise<any> {
+    const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeralPublicKey);
+
+    const payload = {
+      jwt,
+      extendedEphemeralPublicKey,
+      maxEpoch: maxEpoch.toString(),
+      jwtRandomness: randomness,
+      salt: userSalt,
+      keyClaimName: 'sub',
+    };
+
+    console.log('Requesting zkProof from prover service...');
+
+    const response = await fetch('https://prover-dev.mystenlabs.com/v1', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Prover request failed: ${response.status} ${errorText}`);
+    }
+
+    const zkProof = await response.json();
+    console.log('✓ zkProof received');
+    return zkProof;
+  }
+
+  /**
+   * Sign and execute transaction with full zkLogin signature
+   * Uses zkProof from Mysten's prover service for proper zkLogin signatures
+   */
+  async signAndExecuteTransaction(transaction: Transaction): Promise<any> {
+    try {
+      // Get session data from localStorage (stored after login)
+      const sessionData = localStorage.getItem('zklogin_session');
+      if (!sessionData) {
+        throw new Error('No active zkLogin session. Please login first.');
+      }
+
+      const session: ZkLoginSession = JSON.parse(sessionData);
+
+      // Get JWT and salt
+      const jwt = localStorage.getItem('zklogin_jwt');
+      const salt = localStorage.getItem('zklogin_salt');
+
+      if (!jwt || !salt) {
+        throw new Error('Missing JWT or salt. Please login again.');
+      }
+
+      // Create ephemeral keypair from stored private key
+      const ephemeralKeyPair = Ed25519Keypair.fromSecretKey(
+        session.ephemeralPrivateKey
+      );
+
+      console.log('Signing transaction with zkLogin...');
+
+      // 1. Sign the transaction bytes with ephemeral keypair
+      const transactionBytes = await transaction.build({
+        client: this.suiClient,
+      });
+
+      const ephemeralSignature = await ephemeralKeyPair.signTransaction(transactionBytes);
+
+      // 2. Get zkProof from Mysten's prover service
+      const zkProof = await this.getZkProof(
+        jwt,
+        session.ephemeralPublicKey,
+        session.maxEpoch,
+        session.randomness,
+        salt
+      );
+
+      // 3. Generate zkLogin address for verification
+      const userAddr = jwtToAddress(jwt, salt);
+
+      // 4. Create zkLogin signature
+      const zkLoginSignature = getZkLoginSignature({
+        inputs: {
+          ...zkProof,
+          addressSeed: salt,
+        },
+        maxEpoch: session.maxEpoch,
+        userSignature: ephemeralSignature.signature,
+      });
+
+      console.log('✓ zkLogin signature created');
+
+      // 5. Execute transaction with zkLogin signature
+      const result = await this.suiClient.executeTransactionBlock({
+        transactionBlock: transactionBytes,
+        signature: zkLoginSignature,
+        options: {
+          showEffects: true,
+          showEvents: true,
+          showObjectChanges: true,
+        },
+      });
+
+      console.log('✓ Transaction executed successfully');
+      return result;
+    } catch (error) {
+      console.error('Transaction signing failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Estimate gas cost for transaction
+   */
+  async estimateGas(transaction: Transaction): Promise<number> {
+    try {
+      const dryRun = await this.suiClient.dryRunTransactionBlock({
+        transactionBlock: await transaction.build({ client: this.suiClient }),
+      });
+
+      const gasUsed = dryRun.effects.gasUsed;
+      const totalGas =
+        parseInt(gasUsed.computationCost) +
+        parseInt(gasUsed.storageCost) -
+        parseInt(gasUsed.storageRebate);
+
+      return totalGas;
+    } catch (error) {
+      console.error('Gas estimation failed:', error);
+      return 10000000; // Default estimate: 0.01 SUI
+    }
+  }
+
+  /**
+   * Check if user has sufficient balance
+   */
+  async checkBalance(estimatedGas?: number): Promise<{
+    hasBalance: boolean;
+    balance: string;
+    required?: string;
+  }> {
+    const account = this.getCurrentAccount();
+    if (!account) {
+      return { hasBalance: false, balance: '0' };
+    }
+
+    try {
+      const balanceData = await this.suiClient.getBalance({
+        owner: account.userAddr,
+      });
+
+      const balance = parseInt(balanceData.totalBalance);
+
+      if (estimatedGas) {
+        return {
+          hasBalance: balance >= estimatedGas,
+          balance: balanceData.totalBalance,
+          required: estimatedGas.toString(),
+        };
+      }
+
+      return {
+        hasBalance: balance > 0,
+        balance: balanceData.totalBalance,
+      };
+    } catch (error) {
+      console.error('Balance check failed:', error);
+      return { hasBalance: false, balance: '0' };
+    }
   }
 }
 
