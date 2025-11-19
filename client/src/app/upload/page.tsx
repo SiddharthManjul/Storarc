@@ -15,17 +15,21 @@ import {
   getFormatName
 } from "@/lib/supported-formats";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { zkLoginService } from "@/services/zklogin-service";
+import { uploadDocumentWithTransaction } from "@/lib/document-upload-helper";
 
 function UploadPageContent() {
   const [, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; blobId: string } | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; blobId: string; txDigest?: string } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
 
   const handleFileUpload = async (uploadedFiles: File[]) => {
     setError(null);
     setUploadSuccess(false);
+    setUploadProgress('');
     setFiles(uploadedFiles);
 
     if (uploadedFiles.length === 0) return;
@@ -34,34 +38,37 @@ function UploadPageContent() {
     setUploading(true);
 
     try {
-      // Create FormData for file upload
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Upload to API
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      // Use transaction-based upload (user signs and pays gas)
+      const result = await uploadDocumentWithTransaction(file, {
+        onProgress: (progress) => {
+          setUploadProgress(`${progress.stage}: ${progress.message}`);
+        },
+        onNeedsRegistry: async () => {
+          // Ask user if they want to create registry
+          return confirm(
+            'You need to create a document registry first (one-time setup). ' +
+            'This will cost a small gas fee (~0.002 SUI). Create now?'
+          );
+        },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
+      if (result.success) {
+        setUploadSuccess(true);
+        setUploadedFile({
+          name: file.name,
+          blobId: result.documentId || 'unknown',
+          txDigest: result.transactionDigest,
+        });
+      } else {
+        throw new Error(result.error || 'Upload failed');
       }
-
-      const data = await response.json();
-
-      setUploadSuccess(true);
-      setUploadedFile({
-        name: file.name,
-        blobId: data.blobId,
-      });
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       setUploadSuccess(false);
     } finally {
       setUploading(false);
+      setUploadProgress('');
     }
   };
 
@@ -183,7 +190,7 @@ function UploadPageContent() {
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Uploading...</h3>
                   <p className="text-sm text-muted-foreground">
-                    Processing your document and uploading to Walrus storage
+                    {uploadProgress || 'Processing your document and uploading to Walrus storage'}
                   </p>
                 </div>
               </div>
@@ -214,9 +221,22 @@ function UploadPageContent() {
                         <span className="text-sm font-mono text-foreground">{uploadedFile.name}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-muted-foreground">Blob ID:</span>
+                        <span className="text-sm font-medium text-muted-foreground">Document ID:</span>
                         <span className="text-sm font-mono text-foreground">{uploadedFile.blobId.substring(0, 20)}...</span>
                       </div>
+                      {uploadedFile.txDigest && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-muted-foreground">Transaction:</span>
+                          <a
+                            href={`https://suiscan.xyz/testnet/tx/${uploadedFile.txDigest}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-mono text-blue-500 hover:text-blue-600 underline"
+                          >
+                            {uploadedFile.txDigest.substring(0, 20)}...
+                          </a>
+                        </div>
+                      )}
                     </div>
                     <button
                       onClick={resetUpload}
