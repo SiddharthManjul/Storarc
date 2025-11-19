@@ -4,11 +4,10 @@
  */
 
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { generateNonce, generateRandomness, getZkLoginSignature, getExtendedEphemeralPublicKey } from '@mysten/sui/zklogin';
+import { generateNonce, generateRandomness, getZkLoginSignature, getExtendedEphemeralPublicKey, jwtToAddress, genAddressSeed, toZkLoginPublicIdentifier } from '@mysten/sui/zklogin';
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { ZKLOGIN_CONFIG } from '@/config/zklogin';
-import { jwtToAddress } from '@mysten/zklogin';
 
 export interface ZkLoginSession {
   ephemeralPrivateKey: string;
@@ -150,7 +149,18 @@ export class ZkLoginService {
     }
 
     try {
-      return JSON.parse(accountData);
+      const account = JSON.parse(accountData);
+
+      // Validate that stored salt is valid (16 bytes)
+      // If not, clear session to force re-login
+      const salt = localStorage.getItem('zklogin_salt');
+      if (salt && !this.isValidSalt(salt)) {
+        console.warn('Invalid salt detected in session. Clearing session - please log in again.');
+        this.logout();
+        return null;
+      }
+
+      return account;
     } catch {
       return null;
     }
@@ -202,16 +212,50 @@ export class ZkLoginService {
     const data = encoder.encode(sub);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex.slice(0, 32); // Use first 32 chars as salt
+
+    // zkLogin requires salt to be exactly 16 bytes (128 bits)
+    // Take only the first 16 bytes of the SHA-256 hash
+    const salt16Bytes = hashArray.slice(0, 16);
+    const saltHex = salt16Bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Convert to BigInt and return as decimal string
+    const saltBigInt = BigInt('0x' + saltHex);
+    return saltBigInt.toString();
   }
 
   /**
    * Get zkLogin Sui address using proper zkLogin derivation
    */
   private async getZkLoginAddress(jwt: string, salt: string): Promise<string> {
-    // Use the official zkLogin address derivation
-    return jwtToAddress(jwt, salt);
+    // Decode JWT to get claims
+    const jwtPayload = this.decodeJWT(jwt);
+
+    // Generate addressSeed from salt + JWT claims
+    const addressSeed = genAddressSeed(
+      BigInt(salt),
+      'sub',
+      jwtPayload.sub,
+      jwtPayload.aud
+    );
+
+    // Convert addressSeed to zkLogin public identifier and then to Sui address
+    // Note: Using default address format (not legacy)
+    const zkLoginPublicIdentifier = toZkLoginPublicIdentifier(
+      addressSeed,
+      jwtPayload.iss
+    );
+
+    const address = zkLoginPublicIdentifier.toSuiAddress();
+    console.log('Address derived from:', {
+      salt,
+      sub: jwtPayload.sub,
+      aud: jwtPayload.aud,
+      iss: jwtPayload.iss,
+      addressSeed: addressSeed.toString(),
+      finalAddress: address
+    });
+
+    return address;
   }
 
   /**
@@ -219,11 +263,14 @@ export class ZkLoginService {
    */
   private async getZkProof(
     jwt: string,
-    ephemeralPublicKey: string,
+    ephemeralPrivateKey: string,
     maxEpoch: number,
     randomness: string,
     userSalt: string
   ): Promise<any> {
+    // Reconstruct keypair to get PublicKey object
+    const ephemeralKeyPair = Ed25519Keypair.fromSecretKey(ephemeralPrivateKey);
+    const ephemeralPublicKey = ephemeralKeyPair.getPublicKey();
     const extendedEphemeralPublicKey = getExtendedEphemeralPublicKey(ephemeralPublicKey);
 
     const payload = {
@@ -235,7 +282,17 @@ export class ZkLoginService {
       keyClaimName: 'sub',
     };
 
+    console.log('=== Prover Service Request ===');
     console.log('Requesting zkProof from prover service...');
+    console.log('Payload:', {
+      jwt_length: jwt.length,
+      jwt_first_50: jwt.substring(0, 50) + '...',
+      extendedEphemeralPublicKey,
+      maxEpoch: maxEpoch.toString(),
+      jwtRandomness: randomness,
+      salt: userSalt,
+      keyClaimName: 'sub',
+    });
 
     const response = await fetch('https://prover-dev.mystenlabs.com/v1', {
       method: 'POST',
@@ -253,6 +310,19 @@ export class ZkLoginService {
     const zkProof = await response.json();
     console.log('✓ zkProof received');
     return zkProof;
+  }
+
+  /**
+   * Validate salt is 16 bytes (128 bits max value: 2^128 - 1)
+   */
+  private isValidSalt(salt: string): boolean {
+    try {
+      const saltBigInt = BigInt(salt);
+      const maxValid = BigInt('340282366920938463463374607431768211455'); // 2^128 - 1
+      return saltBigInt >= 0 && saltBigInt <= maxValid;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -277,11 +347,69 @@ export class ZkLoginService {
         throw new Error('Missing JWT or salt. Please login again.');
       }
 
+      // Validate salt - if invalid, force re-login (don't regenerate during signing)
+      if (!this.isValidSalt(salt)) {
+        this.logout();
+        throw new Error('Invalid authentication session detected. Please log out and log back in.');
+      }
+
+      // Check if JWT has expired
+      const jwtPayload = this.decodeJWT(jwt);
+      const currentTime = Math.floor(Date.now() / 1000);
+
+      console.log('JWT issued at (iat):', jwtPayload.iat, new Date(jwtPayload.iat * 1000));
+      console.log('JWT expires at (exp):', jwtPayload.exp, new Date(jwtPayload.exp * 1000));
+      console.log('Current time:', currentTime, new Date(currentTime * 1000));
+
+      if (jwtPayload.exp && currentTime >= jwtPayload.exp) {
+        console.error('❌ JWT has EXPIRED!');
+        console.error(`JWT expired at ${new Date(jwtPayload.exp * 1000)}`);
+        console.error(`Current time is ${new Date(currentTime * 1000)}`);
+        this.logout();
+        throw new Error('Your authentication token has expired. Please log out and log back in.');
+      }
+
+      console.log('✓ JWT is still valid');
+
+      // Check if ephemeral keypair has expired
+      const { epoch: currentEpoch } = await this.suiClient.getLatestSuiSystemState();
+      const currentEpochNum = Number(currentEpoch);
+      console.log('Current epoch:', currentEpochNum);
+      console.log('Session maxEpoch:', session.maxEpoch);
+
+      if (currentEpochNum >= session.maxEpoch) {
+        console.error('❌ Ephemeral keypair has EXPIRED!');
+        console.error(`Current epoch ${currentEpochNum} >= maxEpoch ${session.maxEpoch}`);
+        this.logout();
+        throw new Error('Your login session has expired. Please log out and log back in.');
+      }
+
+      console.log('✓ Ephemeral keypair is still valid');
+
       // Create ephemeral keypair from stored private key
       const ephemeralKeyPair = Ed25519Keypair.fromSecretKey(
         session.ephemeralPrivateKey
       );
 
+      // Debug: Check address derivation
+      const derivedAddress = jwtToAddress(jwt, salt);
+      const cachedAddress = this.getCurrentAccount()?.userAddr;
+
+      console.log('=== zkLogin Transaction Signing Debug ===');
+      console.log('Cached address (localStorage):', cachedAddress);
+      console.log('Derived address (from JWT+salt):', derivedAddress);
+      console.log('Salt:', salt);
+      console.log('Salt is valid:', this.isValidSalt(salt));
+
+      if (derivedAddress !== cachedAddress) {
+        console.error('❌ ADDRESS MISMATCH DETECTED!');
+        console.error('The cached address does not match the derived address.');
+        console.error('This means the salt or JWT has changed since login.');
+        this.logout();
+        throw new Error('Address mismatch detected. Your session is invalid. Please log out and log back in.');
+      }
+
+      console.log('✓ Address verification passed');
       console.log('Signing transaction with zkLogin...');
 
       // 1. Sign the transaction bytes with ephemeral keypair
@@ -289,31 +417,84 @@ export class ZkLoginService {
         client: this.suiClient,
       });
 
+      console.log('Transaction built successfully');
+      console.log('Transaction sender:', transaction.getData().sender || '(not set - will use signature address)');
+
       const ephemeralSignature = await ephemeralKeyPair.signTransaction(transactionBytes);
 
       // 2. Get zkProof from Mysten's prover service
       const zkProof = await this.getZkProof(
         jwt,
-        session.ephemeralPublicKey,
+        session.ephemeralPrivateKey,
         session.maxEpoch,
         session.randomness,
         salt
       );
 
-      // 3. Generate zkLogin address for verification
-      const userAddr = jwtToAddress(jwt, salt);
+      console.log('zkProof received from prover:', zkProof);
 
-      // 4. Create zkLogin signature
+      // 3. Generate addressSeed (different from salt!)
+      // addressSeed = genAddressSeed(salt, sub, aud)
+      // Note: jwtPayload already decoded earlier for JWT validation
+      console.log('JWT Payload for addressSeed generation:', {
+        sub: jwtPayload.sub,
+        aud: jwtPayload.aud,
+        iss: jwtPayload.iss,
+        nonce: jwtPayload.nonce,
+      });
+
+      // Verify nonce exists in JWT
+      if (!jwtPayload.nonce) {
+        console.error('❌ JWT is missing nonce!');
+        console.error('The OAuth provider did not include the nonce in the JWT.');
+        this.logout();
+        throw new Error('Invalid JWT: missing nonce. Please log out and log back in.');
+      }
+
+      console.log('JWT nonce:', jwtPayload.nonce);
+      console.log('Session nonce:', session.nonce);
+
+      if (jwtPayload.nonce !== session.nonce) {
+        console.error('❌ NONCE MISMATCH!');
+        console.error('JWT nonce does not match session nonce');
+        this.logout();
+        throw new Error('Session mismatch: JWT nonce does not match. Please log out and log back in.');
+      }
+
+      console.log('✓ Nonce verification passed');
+
+      const addressSeed = genAddressSeed(
+        BigInt(salt),
+        'sub',  // key claim name
+        jwtPayload.sub,  // sub value from JWT
+        jwtPayload.aud   // aud value from JWT
+      ).toString();
+
+      console.log('Generated addressSeed:', addressSeed);
+      console.log('Salt (different from addressSeed):', salt);
+
+      // Create zkLogin signature inputs
+      const signatureInputs = {
+        ...zkProof,
+        addressSeed: addressSeed,
+      };
+
+      console.log('Signature inputs keys:', Object.keys(signatureInputs));
+      console.log('maxEpoch:', session.maxEpoch);
+      console.log('userSignature:', ephemeralSignature.signature);
+
       const zkLoginSignature = getZkLoginSignature({
-        inputs: {
-          ...zkProof,
-          addressSeed: salt,
-        },
+        inputs: signatureInputs,
         maxEpoch: session.maxEpoch,
         userSignature: ephemeralSignature.signature,
       });
 
       console.log('✓ zkLogin signature created');
+      console.log('zkLogin signature (first 100 chars):', zkLoginSignature.substring(0, 100));
+      console.log('zkLogin signature length:', zkLoginSignature.length);
+
+      // Verify the signature will derive to the correct address
+      console.log('Expected transaction sender:', derivedAddress);
 
       // 5. Execute transaction with zkLogin signature
       const result = await this.suiClient.executeTransactionBlock({
