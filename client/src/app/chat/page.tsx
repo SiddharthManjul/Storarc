@@ -5,8 +5,6 @@ import { useState, useEffect } from "react";
 import { Send, FileText, Clock, Plus, MessageSquare, Star, AlertCircle, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { apiGet, apiPost } from "@/lib/api-client";
 
 interface Message {
   id: string;
@@ -48,7 +46,8 @@ function ChatPageContent() {
   const loadChats = async () => {
     try {
       setLoadingChats(true);
-      const data = await apiGet("/api/chat/list");
+      const response = await fetch("/api/chat/list");
+      const data = await response.json();
 
       if (data.success) {
         // Convert chat metadata to UI format
@@ -77,7 +76,12 @@ function ChatPageContent() {
   const loadChatMessages = async (chatId: string) => {
     try {
       setIsLoading(true);
-      const data = await apiPost("/api/chat/load", { chatId });
+      const response = await fetch("/api/chat/load", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId }),
+      });
+      const data = await response.json();
 
       if (data.success) {
         // Update chat with loaded messages
@@ -157,10 +161,14 @@ function ChatPageContent() {
         setSelectedChatId(newChatId);
 
         // Save to backend
-        await apiPost("/api/chat/create", {
-          chatId: newChatId,
-          title: newChat.title,
-          initialMessage: userMessage,
+        await fetch("/api/chat/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: newChatId,
+            title: newChat.title,
+            initialMessage: userMessage,
+          }),
         });
       } else {
         // Add message to existing chat
@@ -178,9 +186,13 @@ function ChatPageContent() {
         );
 
         // Save message to backend
-        await apiPost("/api/chat/message", {
-          chatId: selectedChatId,
-          message: userMessage,
+        await fetch("/api/chat/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: selectedChatId,
+            message: userMessage,
+          }),
         });
       }
 
@@ -212,9 +224,13 @@ function ChatPageContent() {
 
       // Save assistant message to backend
       if (currentChatId) {
-        await apiPost("/api/chat/message", {
-          chatId: currentChatId,
-          message: assistantMessage,
+        await fetch("/api/chat/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: currentChatId,
+            message: assistantMessage,
+          }),
         });
       }
     } catch (error) {
@@ -247,9 +263,13 @@ function ChatPageContent() {
 
     // Update backend
     try {
-      await apiPost("/api/chat/importance", {
-        chatId,
-        isImportant: newImportantStatus,
+      await fetch("/api/chat/importance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chatId,
+          isImportant: newImportantStatus,
+        }),
       });
     } catch (error) {
       console.error("Error updating importance:", error);
@@ -279,7 +299,11 @@ function ChatPageContent() {
 
     // Delete from backend
     try {
-      await apiPost("/api/chat/delete", { chatId });
+      await fetch("/api/chat/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId }),
+      });
     } catch (error) {
       console.error("Error deleting chat:", error);
       setError("Failed to delete chat");
@@ -582,9 +606,5 @@ function ChatPageContent() {
 }
 
 export default function ChatPage() {
-  return (
-    <ProtectedRoute>
-      <ChatPageContent />
-    </ProtectedRoute>
-  );
+  return <ChatPageContent />;
 }
