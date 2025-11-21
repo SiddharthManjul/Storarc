@@ -1,88 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import { FileUpload } from "@/components/ui/file-upload";
-import { motion, AnimatePresence } from "framer-motion";
+import React from "react";
+import { motion } from "framer-motion";
 import {
-  CheckCircle2,
   Upload,
   FileText,
-  AlertCircle,
-  Loader2
+  AlertCircle
 } from "lucide-react";
 import {
   SUPPORTED_FORMATS,
   getFormatName
 } from "@/lib/supported-formats";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { zkLoginService } from "@/services/zklogin-service";
-import { uploadDocumentWithTransaction } from "@/lib/document-upload-helper";
 
-function UploadPageContent() {
-  const [, setFiles] = useState<File[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; blobId: string; txDigest?: string } | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<string>('');
-
-  const handleFileUpload = async (uploadedFiles: File[]) => {
-    setError(null);
-    setUploadSuccess(false);
-    setUploadProgress('');
-    setFiles(uploadedFiles);
-
-    if (uploadedFiles.length === 0) return;
-
-    const file = uploadedFiles[0];
-    setUploading(true);
-
-    try {
-      // Use transaction-based upload (user signs and pays gas)
-      const result = await uploadDocumentWithTransaction(file, {
-        onProgress: (progress) => {
-          setUploadProgress(`${progress.stage}: ${progress.message}`);
-        },
-        onNeedsRegistry: async () => {
-          // Ask user if they want to create registry
-          return confirm(
-            'You need to create a document registry first (one-time setup). ' +
-            'This will cost a small gas fee (~0.002 SUI). Create now?'
-          );
-        },
-      });
-
-      if (result.success) {
-        setUploadSuccess(true);
-        setUploadedFile({
-          name: file.name,
-          blobId: result.documentId || 'unknown',
-          txDigest: result.transactionDigest,
-        });
-      } else {
-        throw new Error(result.error || 'Upload failed');
-      }
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
-      setUploadSuccess(false);
-    } finally {
-      setUploading(false);
-      setUploadProgress('');
-    }
-  };
-
-  const handleError = (errorMessage: string) => {
-    setError(errorMessage);
-    setUploadSuccess(false);
-  };
-
-  const resetUpload = () => {
-    setFiles([]);
-    setError(null);
-    setUploadSuccess(false);
-    setUploadedFile(null);
-  };
+export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -164,122 +94,21 @@ function UploadPageContent() {
           </div>
         </motion.div>
 
-        {/* Upload Area */}
+        {/* Upload Area - Placeholder */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mb-8"
         >
-          <div className="bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-            <FileUpload onChange={handleFileUpload} onError={handleError} />
+          <div className="bg-card border border-border rounded-xl shadow-lg p-12 text-center">
+            <AlertCircle className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">Wallet Integration Required</h3>
+            <p className="text-muted-foreground">
+              Upload functionality will be available after wallet provider integration is complete.
+            </p>
           </div>
         </motion.div>
-
-        {/* Loading State */}
-        <AnimatePresence>
-          {uploading && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="mb-8"
-            >
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 flex items-center gap-4">
-                <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Uploading...</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {uploadProgress || 'Processing your document and uploading to Walrus storage'}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Success State */}
-        <AnimatePresence>
-          {uploadSuccess && uploadedFile && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="mb-8"
-            >
-              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6">
-                <div className="flex items-start gap-4">
-                  <CheckCircle2 className="w-6 h-6 text-green-500 shrink-0 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Upload Successful!</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Your document has been uploaded to Walrus and registered on Sui blockchain.
-                    </p>
-                    <div className="bg-background rounded-lg p-4 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-muted-foreground">Filename:</span>
-                        <span className="text-sm font-mono text-foreground">{uploadedFile.name}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-muted-foreground">Document ID:</span>
-                        <span className="text-sm font-mono text-foreground">{uploadedFile.blobId.substring(0, 20)}...</span>
-                      </div>
-                      {uploadedFile.txDigest && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-muted-foreground">Transaction:</span>
-                          <a
-                            href={`https://suiscan.xyz/testnet/tx/${uploadedFile.txDigest}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-mono text-blue-500 hover:text-blue-600 underline"
-                          >
-                            {uploadedFile.txDigest.substring(0, 20)}...
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={resetUpload}
-                      className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                    >
-                      Upload Another File
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Error State */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="mb-8"
-            >
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
-                <div className="flex items-start gap-4">
-                  <AlertCircle className="w-6 h-6 text-red-500 shrink-0 mt-1" />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Upload Failed</h3>
-                    <p className="text-sm text-red-600 dark:text-red-400 whitespace-pre-line">
-                      {error}
-                    </p>
-                    <button
-                      onClick={() => setError(null)}
-                      className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Info Box */}
         <motion.div
@@ -325,13 +154,5 @@ function UploadPageContent() {
         </motion.div>
       </div>
     </div>
-  );
-}
-
-export default function UploadPage() {
-  return (
-    <ProtectedRoute>
-      <UploadPageContent />
-    </ProtectedRoute>
   );
 }
