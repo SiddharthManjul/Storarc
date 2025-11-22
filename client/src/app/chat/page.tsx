@@ -345,7 +345,10 @@ function ChatPageContent() {
       // Query RAG system for response
       const response = await fetch("/api/query", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(), // Add user address for access control
+        },
         body: JSON.stringify({ question: currentInput, topK: 4 }),
       });
 
