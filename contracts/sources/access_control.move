@@ -166,6 +166,32 @@ module WalRag::access_control {
     public fun get_policy_info(policy: &AccessPolicy): (vector<u8>, address, bool, u64) {
         (policy.document_id, policy.owner, policy.is_public, policy.updated_at)
     }
+
+    /// SEAL approval function - validates access for decryption
+    /// This function is called by SEAL key servers to validate that a user
+    /// has permission to decrypt a document before returning decryption keys
+    public entry fun seal_approve_document_access(
+        _package_id: address,  // SEAL package ID (unused but required by SEAL)
+        policy: &AccessPolicy,
+        requester: address,
+        _ctx: &TxContext
+    ) {
+        // Owner always has access
+        if (policy.owner == requester) {
+            return
+        };
+
+        // Public documents are accessible to all
+        if (policy.is_public) {
+            return
+        };
+
+        // Check if requester is in allowed list
+        assert!(
+            vector::contains(&policy.allowed_users, &requester),
+            E_NO_ACCESS
+        );
+    }
 }
 
 // Day 3 Deployment Instructions:
