@@ -17,11 +17,23 @@ export async function GET(request: NextRequest) {
     // Get user-specific chat service
     const chatService = await getUserChatService(user.userAddr);
 
+    // If no registry, user needs to create one
+    if (!chatService) {
+      return NextResponse.json({
+        success: true,
+        needsRegistry: true,
+        chats: [],
+        total: 0,
+        message: "Please create your chat registry first"
+      });
+    }
+
     // Get all chats for this user
     const chats = await chatService.getAllChats();
 
     return NextResponse.json({
       success: true,
+      needsRegistry: false,
       chats,
       total: chats.length,
     });
