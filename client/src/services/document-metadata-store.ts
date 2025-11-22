@@ -7,6 +7,15 @@
 import { WalrusClient } from './walrus-client';
 import { metadataRegistry } from './metadata-registry';
 
+export interface EncryptionMetadata {
+  sealEncryptedObjectId: string;
+  encryptionAlgorithm: 'aes' | 'hmac';
+  threshold: number;
+  keyServerIds: string[];
+  accessPolicyId: string;
+  encryptedAt: number;
+}
+
 export interface DocumentMetadata {
   documentId: string; // Unique ID for document
   filename: string;
@@ -19,6 +28,7 @@ export interface DocumentMetadata {
   lastAccessed: number;
   chunkCount: number;
   owner: string; // User address
+  encryptionMetadata?: EncryptionMetadata; // SEAL encryption metadata (if private)
 }
 
 export interface UserDocumentIndex {
