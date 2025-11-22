@@ -6,6 +6,11 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
 import { bcs } from '@mysten/sui/bcs';
+import {
+  encryptFileContent,
+  createAccessPolicyTransaction,
+  getPolicyIdFromTransaction,
+} from './encryption-helper';
 
 // Constants
 const DOCUMENT_REGISTRY_PACKAGE_ID = process.env.NEXT_PUBLIC_DOCUMENT_REGISTRY_PACKAGE_ID ||
@@ -27,6 +32,7 @@ export interface DocumentUploadResult {
 }
 
 export interface DocumentUploadOptions {
+  uploadMode?: 'public' | 'private';
   onProgress?: (progress: UploadProgress) => void;
   onNeedsRegistry?: () => Promise<boolean>;
 }
@@ -154,7 +160,7 @@ export async function uploadDocumentWithWallet(
   options?: DocumentUploadOptions
 ): Promise<DocumentUploadResult> {
   try {
-    const { onProgress, onNeedsRegistry } = options || {};
+    const { onProgress, onNeedsRegistry, uploadMode = 'public' } = options || {};
 
     if (!userAddr) {
       return {
@@ -164,15 +170,83 @@ export async function uploadDocumentWithWallet(
       };
     }
 
-    // Step 1: Upload file to Walrus
+    console.log('📤 Starting document upload:', {
+      filename: file.name,
+      size: file.size,
+      mode: uploadMode,
+      owner: userAddr,
+    });
+
+    let policyId: string | undefined;
+    let policyTransactionDigest: string | undefined;
+    let fileToUpload: File | Blob = file;
+    let originalFileContent: string | undefined; // For RAG ingestion of private docs
+
+    // Step 0.5: If private mode, encrypt and create access policy FIRST
+    if (uploadMode === 'private') {
+      console.log('🔐 PRIVATE MODE: Creating access policy and encrypting...');
+
+      onProgress?.({
+        stage: 'building_tx',
+        message: 'Creating access policy on Sui...',
+        progress: 5,
+      });
+
+      // Create access policy first
+      const documentId = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const policyTx = await createAccessPolicyTransaction(
+        documentId,
+        userAddr,
+        false, // Private by default
+        suiClient
+      );
+
+      console.log('📝 Signing access policy transaction...');
+      const policyResult = await signAndExecuteTransaction({ transaction: policyTx });
+
+      if (!policyResult.digest) {
+        return {
+          success: false,
+          error: 'Access policy creation failed',
+          details: 'Failed to create access policy on blockchain',
+        };
+      }
+
+      policyTransactionDigest = policyResult.digest;
+      policyId = (await getPolicyIdFromTransaction(suiClient, policyResult.digest)) || undefined;
+
+      console.log('✅ Access policy created:', {
+        policyId,
+        transactionDigest: policyResult.digest,
+      });
+
+      // Encrypt the file
+      onProgress?.({
+        stage: 'uploading',
+        message: 'Encrypting document with SEAL...',
+        progress: 8,
+      });
+
+      const { encryptedContent, metadata } = await encryptFileContent(file, userAddr);
+      // Convert Uint8Array to regular array for Blob
+      fileToUpload = new Blob([new Uint8Array(encryptedContent)], { type: file.type });
+
+      console.log('🔒 Document encrypted:', {
+        originalSize: file.size,
+        encryptedSize: fileToUpload.size,
+        encryption: metadata,
+      });
+    }
+
+    // Step 1: Upload file to Walrus (encrypted or plain)
     onProgress?.({
       stage: 'uploading',
-      message: 'Uploading file to Walrus...',
+      message: uploadMode === 'private' ? 'Uploading encrypted file to Walrus...' : 'Uploading file to Walrus...',
       progress: 10,
     });
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload, file.name);
 
     const uploadResponse = await fetch('/api/upload/walrus', {
       method: 'POST',
@@ -343,7 +417,17 @@ export async function uploadDocumentWithWallet(
         pageCount: undefined,
         chunkCount: 0,
         transactionDigest: txResult.digest,
+        isPrivate: uploadMode === 'private',
+        policyId,
+        policyTransactionDigest,
       }),
+    });
+
+    console.log('📝 Upload confirmation payload:', {
+      documentId,
+      isPrivate: uploadMode === 'private',
+      policyId: policyId || 'N/A (public)',
+      walrusBlobId: blobId,
     });
 
     const confirmData = await confirmResponse.json();
@@ -385,6 +469,26 @@ export async function uploadDocumentWithWallet(
       } else {
         const ingestData = await ingestResponse.json();
         console.log('Document indexed successfully:', ingestData);
+
+        // CRITICAL: Update metadata with RAG blobId (vectors use this, not the original upload blobId)
+        if (ingestData.data?.blobId) {
+          console.log(`🔄 Updating metadata with RAG blobId: ${ingestData.data.blobId}`);
+          try {
+            await fetch('/api/upload/update-blobid', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-user-address': userAddr,
+              },
+              body: JSON.stringify({
+                documentId: confirmData.documentId,
+                ragBlobId: ingestData.data.blobId,
+              }),
+            });
+          } catch (updateError) {
+            console.warn('Failed to update metadata with RAG blobId:', updateError);
+          }
+        }
       }
     } catch (error) {
       console.warn('Document ingestion error (non-critical):', error);
