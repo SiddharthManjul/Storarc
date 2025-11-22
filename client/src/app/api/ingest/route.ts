@@ -29,13 +29,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get user address from request headers
+    const userAddress = request.headers.get('x-user-address');
+    console.log(`📤 Ingesting document from user: ${userAddress || 'anonymous'}`);
+
     // Ensure vector store is initialized
     if (!vectorStoreService.isInitialized()) {
       await vectorStoreService.initialize();
     }
 
-    // Ingest the document
-    const result = await ragService.ingestDocument(content, { filename });
+    // Ingest the document with owner information
+    const result = await ragService.ingestDocument(content, {
+      filename,
+      owner: userAddress || undefined,
+    });
 
     return NextResponse.json({
       success: true,
