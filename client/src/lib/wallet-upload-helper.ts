@@ -356,7 +356,41 @@ export async function uploadDocumentWithWallet(
       };
     }
 
-    // Step 6: Complete
+    // Step 6: Trigger document ingestion (indexing for RAG)
+    onProgress?.({
+      stage: 'confirming',
+      message: 'Indexing document for search...',
+      progress: 90,
+    });
+
+    try {
+      // Read file content as text
+      const fileContent = await file.text();
+
+      const ingestResponse = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-address': userAddr,
+        },
+        body: JSON.stringify({
+          content: fileContent,
+          filename: filename || file.name,
+        }),
+      });
+
+      if (!ingestResponse.ok) {
+        const errorText = await ingestResponse.text();
+        console.warn('Document ingestion failed (non-critical):', errorText);
+      } else {
+        const ingestData = await ingestResponse.json();
+        console.log('Document indexed successfully:', ingestData);
+      }
+    } catch (error) {
+      console.warn('Document ingestion error (non-critical):', error);
+    }
+
+    // Step 7: Complete
     onProgress?.({
       stage: 'complete',
       message: 'Document uploaded successfully!',
