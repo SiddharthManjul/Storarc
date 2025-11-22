@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { FileUpload } from "@/components/ui/file-upload";
+import { UploadModeSelector, UploadMode } from "@/components/UploadModeSelector";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
@@ -23,11 +24,12 @@ export default function UploadPage() {
   const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
   const suiClient = useSuiClient();
 
+  const [uploadMode, setUploadMode] = useState<UploadMode>('public');
   const [, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; blobId: string; txDigest?: string } | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; blobId: string; txDigest?: string; isPrivate?: boolean } | null>(null);
   const [uploadProgress, setUploadProgress] = useState<string>('');
 
   const handleFileUpload = async (uploadedFiles: File[]) => {
@@ -53,6 +55,7 @@ export default function UploadPage() {
         signAndExecuteTransaction,
         suiClient,
         {
+          uploadMode, // Pass the selected upload mode
           onProgress: (progress) => {
             setUploadProgress(`${progress.stage}: ${progress.message}`);
           },
@@ -71,6 +74,7 @@ export default function UploadPage() {
           name: file.name,
           blobId: result.documentId || 'unknown',
           txDigest: result.transactionDigest,
+          isPrivate: uploadMode === 'private',
         });
       } else {
         throw new Error(result.error || 'Upload failed');
@@ -196,11 +200,27 @@ export default function UploadPage() {
           </div>
         </motion.div>
 
-        {/* Upload Area */}
+        {/* Privacy Mode Selector */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
+          className="mb-8"
+        >
+          <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
+            <UploadModeSelector
+              mode={uploadMode}
+              onChange={setUploadMode}
+              disabled={uploading || !currentAccount}
+            />
+          </div>
+        </motion.div>
+
+        {/* Upload Area */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
           className="mb-8"
         >
           <div className="bg-card border border-border rounded-xl shadow-lg overflow-hidden">
@@ -247,9 +267,17 @@ export default function UploadPage() {
                 <div className="flex items-start gap-4">
                   <CheckCircle2 className="w-6 h-6 text-green-500 shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Upload Successful!</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      Upload Successful!
+                      {uploadedFile.isPrivate && (
+                        <span className="ml-2 px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded-full">
+                          🔒 Encrypted
+                        </span>
+                      )}
+                    </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Your document has been uploaded to Walrus and registered on Sui blockchain.
+                      Your document has been {uploadedFile.isPrivate ? 'encrypted and ' : ''}uploaded to Walrus and registered on Sui blockchain.
+                      {uploadedFile.isPrivate && ' Only you and users you grant access to can decrypt and view this document.'}
                     </p>
                     <div className="bg-background rounded-lg p-4 space-y-2">
                       <div className="flex justify-between items-center">
