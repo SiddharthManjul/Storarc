@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
       pageCount,
       chunkCount,
       transactionDigest,
+      isPrivate,
+      policyId,
+      policyTransactionDigest,
     } = body;
 
     if (!documentId || !filename || !fileSize || !walrusBlobId) {
@@ -41,6 +44,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Prepare encryption metadata if private
+    const encryptionMetadata = isPrivate && policyId ? {
+      sealEncryptedObjectId: walrusBlobId,
+      encryptionAlgorithm: 'aes' as const,
+      threshold: 2,
+      keyServerIds: (process.env.NEXT_PUBLIC_SEAL_KEY_SERVER_IDS || '').split(','),
+      accessPolicyId: policyId,
+      encryptedAt: Date.now(),
+    } : undefined;
 
     // Store document metadata
     await documentMetadataStore.addDocumentToIndex(user.userAddr, {
@@ -55,9 +68,15 @@ export async function POST(request: NextRequest) {
       lastAccessed: Date.now(),
       chunkCount: chunkCount || 0,
       owner: user.userAddr,
+      encryptionMetadata,
     });
 
     console.log(`[Document Confirmed] ${filename} for user ${user.userAddr}`);
+    console.log(`[Privacy] ${isPrivate ? 'PRIVATE (Encrypted)' : 'PUBLIC'}`);
+    if (policyId) {
+      console.log(`[Access Policy] ${policyId}`);
+      console.log(`[Policy Transaction] ${policyTransactionDigest}`);
+    }
     console.log(`[Transaction] ${transactionDigest}`);
 
     return NextResponse.json({
