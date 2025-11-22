@@ -44,14 +44,16 @@ export class VectorStoreService {
         console.log('Loading existing vector store...');
         await this.loadFromDisk();
 
-        // Check if cache is stale (only if Sui registry is configured)
-        if (this.useSuiRegistry) {
-          const isStale = await this.isCacheStale();
-          if (isStale) {
-            console.log('⚠️  Local cache is stale, syncing from Sui registry...');
-            await this.syncFromSuiRegistry();
-          }
-        }
+        // DISABLED: Sui sync can wipe local data if Sui upload failed during ingestion
+        // TODO: Re-enable with proper conflict resolution
+        // // Check if cache is stale (only if Sui registry is configured)
+        // if (this.useSuiRegistry) {
+        //   const isStale = await this.isCacheStale();
+        //   if (isStale) {
+        //     console.log('⚠️  Local cache is stale, syncing from Sui registry...');
+        //     await this.syncFromSuiRegistry();
+        //   }
+        // }
 
         console.log('✓ Vector store loaded');
       } else {
