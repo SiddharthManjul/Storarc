@@ -65,12 +65,18 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   try {
+    // Ensure vector store is initialized
+    if (!vectorStoreService.isInitialized()) {
+      await vectorStoreService.initialize();
+    }
+
     const stats = vectorStoreService.getStats();
 
     return NextResponse.json({
       totalDocuments: stats.totalVectors,
       registryVersion: stats.version,
-      lastSync: stats.lastSync,
+      isInitialized: stats.isInitialized,
+      useSuiRegistry: stats.useSuiRegistry,
       status: 'ok',
     });
   } catch (error) {
