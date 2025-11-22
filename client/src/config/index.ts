@@ -21,13 +21,15 @@ export const config = {
 
   // Sui Blockchain Configuration
   sui: {
-    network: process.env.SUI_NETWORK || 'testnet',
-    rpcUrl: process.env.SUI_RPC_URL || 'https://fullnode.testnet.sui.io:443',
+    network: process.env.SUI_NETWORK || process.env.NEXT_PUBLIC_SUI_NETWORK || 'testnet',
+    rpcUrl: process.env.SUI_RPC_URL || process.env.NEXT_PUBLIC_SUI_RPC_URL || 'https://fullnode.testnet.sui.io:443',
     privateKey: process.env.SUI_PRIVATE_KEY || '',
     vectorRegistryPackageId: process.env.VECTOR_REGISTRY_PACKAGE_ID || '',
     vectorRegistryObjectId: process.env.VECTOR_REGISTRY_OBJECT_ID || '',
     chatRegistryPackageId: process.env.CHAT_REGISTRY_PACKAGE_ID || '',
     chatRegistryObjectId: process.env.CHAT_REGISTRY_OBJECT_ID || '',
+    documentRegistryPackageId: process.env.DOCUMENT_REGISTRY_PACKAGE_ID || process.env.NEXT_PUBLIC_DOCUMENT_REGISTRY_PACKAGE_ID || '',
+    accessControlPackageId: process.env.ACCESS_CONTROL_PACKAGE_ID || process.env.NEXT_PUBLIC_ACCESS_CONTROL_PACKAGE_ID || '',
   },
 
   // Walrus Configuration
@@ -59,6 +61,16 @@ export const config = {
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 100, // limit each IP to 100 requests per windowMs
     },
+  },
+
+  // SEAL Configuration (Simple Encrypted Application Library)
+  seal: {
+    accessControlPackageId: process.env.NEXT_PUBLIC_ACCESS_CONTROL_PACKAGE_ID ||
+                           process.env.ACCESS_CONTROL_PACKAGE_ID || '',
+    keyServerIds: (process.env.NEXT_PUBLIC_SEAL_KEY_SERVER_IDS || '').split(',').filter(id => id && !id.includes('TODO')),
+    threshold: parseInt(process.env.NEXT_PUBLIC_SEAL_THRESHOLD || '2'),
+    verifyServers: process.env.NEXT_PUBLIC_SEAL_VERIFY_SERVERS === 'true',
+    sessionTTLMinutes: parseInt(process.env.SEAL_SESSION_TTL_MINUTES || '60'),
   },
 };
 
