@@ -156,7 +156,7 @@ export function Footer() {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="text-center">
-              <p className="text-lg font-medium bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              <p className="text-lg font-medium bg-clip-text text-[#b35340]">
                 Decentralize your data. Amplify your intelligence.
               </p>
             </div>

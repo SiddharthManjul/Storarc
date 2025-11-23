@@ -59,8 +59,9 @@
   --sidebar-ring: #ff7e5f;
 
   /* Typography */
-  --font-sans: Montserrat, ui-sans-serif, system-ui, sans-serif;
-  --font-serif: Merriweather, ui-serif, Georgia, serif;
+  --font-sans: "Ubuntu", ui-sans-serif, system-ui, sans-serif; /* Body text */
+  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif; /* Headings */
+  --font-serif: ui-serif, Georgia, serif;
   --font-mono: "Ubuntu Mono", ui-monospace, monospace;
 
   /* Design Tokens */
@@ -145,6 +146,24 @@
   --shadow-opacity: 0.2;
 }
 
+/* Global Typography Styles */
+body {
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+.font-body {
+  font-family: var(--font-sans);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -180,6 +199,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --font-sans: var(--font-sans);
+  --font-heading: var(--font-heading);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
 

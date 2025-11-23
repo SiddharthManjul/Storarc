@@ -5,7 +5,7 @@ import  WorldMap  from "./ui/world-map";
 
 export function WorldMapSection() {
   return (
-    <section className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden bg-background">
+    <section className="relative py-24 px-4 sm:px-6 lg:px-8 overflow-hidden bg-[#ffedea]">
       <div className="relative z-10 max-w-7xl mx-auto">
         {/* Section Header */}
         <motion.div
@@ -32,7 +32,7 @@ export function WorldMapSection() {
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1 }}
           viewport={{ once: true }}
-          className="w-full"
+          className="w-full bg-[#ffedea]"
         >
           <WorldMap
             dots={[
@@ -165,28 +165,28 @@ export function WorldMapSection() {
           className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-16"
         >
           <div className="text-center">
-            <div className="text-3xl sm:text-4xl font-bold bg-linear-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent mb-2">
+            <div className="text-3xl sm:text-4xl font-bold bg-clip-text text-[#3d3436] mb-2">
               150+
             </div>
-            <div className="text-sm text-muted-foreground">Storage Nodes</div>
+            <div className="text-sm text-[#b35340]">Storage Nodes</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl sm:text-4xl font-bold bg-linear-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+            <div className="text-3xl sm:text-4xl font-bold bg-clip-text text-[#3d3436] mb-2">
               45
             </div>
-            <div className="text-sm text-muted-foreground">Countries</div>
+            <div className="text-sm text-[#b35340]">Countries</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl sm:text-4xl font-bold bg-linear-to-r from-orange-500 to-red-500 bg-clip-text text-transparent mb-2">
+            <div className="text-3xl sm:text-4xl font-bold bg-clip-text text-[#3d3436] mb-2">
               99.99%
             </div>
-            <div className="text-sm text-muted-foreground">Uptime</div>
+            <div className="text-sm text-[#b35340]">Uptime</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl sm:text-4xl font-bold bg-linear-to-r from-green-500 to-emerald-500 bg-clip-text text-transparent mb-2">
+            <div className="text-3xl sm:text-4xl font-bold  bg-clip-text text-[#3d3436] mb-2">
               &lt;50ms
             </div>
-            <div className="text-sm text-muted-foreground">Avg Latency</div>
+            <div className="text-sm text-[#b35340]">Avg Latency</div>
           </div>
         </motion.div>
       </div>
