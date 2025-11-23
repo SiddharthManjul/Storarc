@@ -67,22 +67,22 @@ export function AccessControlPanel({
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 space-y-6">
+    <div className="bg-[#feb47b] border-2 border-[#b35340] rounded-lg p-6 space-y-6 shadow-lg">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-green-500/10 rounded-lg">
-            <Lock className="w-5 h-5 text-green-400" />
+          <div className="p-2 bg-[#ff7e5f]/20 rounded-lg">
+            <Lock className="w-5 h-5 text-[#ff7e5f]" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-100">
+            <h3 className="text-lg font-semibold text-[#3d3436]">
               {documentName}
             </h3>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-[#3d3436]/70 mt-1">
               Owner: {formatAddress(owner)}
             </p>
             {policyId && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-[#3d3436]/50 mt-1">
                 Policy ID: {formatAddress(policyId)}
               </p>
             )}
@@ -91,8 +91,8 @@ export function AccessControlPanel({
         <span
           className={`px-3 py-1 text-xs font-medium rounded-full ${
             isPublic
-              ? 'bg-blue-500/10 text-blue-400'
-              : 'bg-green-500/10 text-green-400'
+              ? 'bg-[#ffedea] text-[#ff7e5f] border border-[#ff7e5f]/30'
+              : 'bg-green-100 text-green-700 border border-green-200'
           }`}
         >
           {isPublic ? 'Public' : 'Private'}
@@ -102,13 +102,13 @@ export function AccessControlPanel({
       {/* Access Control Section */}
       {!isPublic && (
         <>
-          <div className="border-t border-gray-700 pt-6">
-            <h4 className="text-sm font-medium text-gray-200 mb-4">
+          <div className="border-t-2 border-[#b35340]/20 pt-6">
+            <h4 className="text-sm font-medium text-[#3d3436] mb-4">
               Granted Access ({allowedUsers.length})
             </h4>
 
             {allowedUsers.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">
+              <p className="text-sm text-[#3d3436]/60 italic">
                 No users have been granted access yet
               </p>
             ) : (
@@ -116,17 +116,17 @@ export function AccessControlPanel({
                 {allowedUsers.map((userAddress) => (
                   <div
                     key={userAddress}
-                    className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-700"
+                    className="flex items-center justify-between p-3 bg-[#ffedea] rounded-lg border border-[#b35340]/20"
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full" />
-                      <span className="text-sm font-mono text-gray-300">
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="text-sm font-mono text-[#3d3436]">
                         {formatAddress(userAddress)}
                       </span>
                     </div>
                     <button
                       onClick={() => handleRevokeAccess(userAddress)}
-                      className="p-1.5 text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                      className="p-1.5 text-red-600 hover:bg-red-100 rounded transition-colors"
                       title="Revoke access"
                     >
                       <X className="w-4 h-4" />
@@ -138,9 +138,9 @@ export function AccessControlPanel({
           </div>
 
           {/* Grant Access Form */}
-          <div className="border-t border-gray-700 pt-6">
-            <h4 className="text-sm font-medium text-gray-200 mb-4 flex items-center gap-2">
-              <UserPlus className="w-4 h-4" />
+          <div className="border-t-2 border-[#b35340]/20 pt-6">
+            <h4 className="text-sm font-medium text-[#3d3436] mb-4 flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-[#ff7e5f]" />
               Grant New Access
             </h4>
 
@@ -150,19 +150,19 @@ export function AccessControlPanel({
                 value={newUserAddress}
                 onChange={(e) => setNewUserAddress(e.target.value)}
                 placeholder="Enter Sui address (0x...)"
-                className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                className="flex-1 px-4 py-2 bg-[#ffedea] border-2 border-[#b35340]/30 rounded-lg text-sm text-[#3d3436] placeholder-[#3d3436]/50 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] focus:border-[#ff7e5f]"
                 disabled={isGranting}
               />
               <button
                 onClick={handleGrantAccess}
                 disabled={!newUserAddress.trim() || isGranting}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-[#ff7e5f] text-[#ffedea] rounded-lg text-sm font-medium hover:bg-[#ff9a76] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
               >
                 {isGranting ? 'Granting...' : 'Grant'}
               </button>
             </div>
 
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-[#3d3436]/60 mt-2">
               This will require a wallet signature to update the access policy on-chain
             </p>
           </div>
@@ -170,14 +170,14 @@ export function AccessControlPanel({
       )}
 
       {/* Shareable Link */}
-      <div className="border-t border-gray-700 pt-6">
+      <div className="border-t-2 border-[#b35340]/20 pt-6">
         <button
           onClick={copyShareableLink}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:bg-gray-750 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#ffedea] border-2 border-[#b35340]/30 rounded-lg text-sm text-[#3d3436] hover:bg-[#feb47b] transition-colors font-medium"
         >
           {copiedLink ? (
             <>
-              <Check className="w-4 h-4 text-green-400" />
+              <Check className="w-4 h-4 text-green-600" />
               Link Copied!
             </>
           ) : (
@@ -189,7 +189,7 @@ export function AccessControlPanel({
         </button>
 
         {!isPublic && (
-          <p className="text-xs text-gray-500 mt-2 text-center">
+          <p className="text-xs text-[#3d3436]/60 mt-2 text-center">
             Only users with granted access can view this document
           </p>
         )}
@@ -197,12 +197,12 @@ export function AccessControlPanel({
 
       {/* View on Explorer */}
       {policyId && (
-        <div className="border-t border-gray-700 pt-4">
+        <div className="border-t-2 border-[#b35340]/20 pt-4">
           <a
             href={`https://suiscan.xyz/testnet/object/${policyId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+            className="flex items-center justify-center gap-2 text-sm text-[#ff7e5f] hover:text-[#ff9a76] transition-colors font-medium"
           >
             <ExternalLink className="w-4 h-4" />
             View Policy on Sui Explorer

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -154,11 +155,13 @@ export default function DocumentsPage() {
     return (
       <div className="min-h-screen bg-background pt-24 pb-12 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 flex items-center gap-4">
-            <Users className="w-6 h-6 text-blue-500" />
+          <div className="bg-[#feb47b] border-2 border-[#b35340] rounded-xl p-6 flex items-center gap-4 shadow-lg">
+            <div className="w-12 h-12 rounded-full bg-[#ff7e5f]/20 flex items-center justify-center shrink-0">
+              <Users className="w-6 h-6 text-[#ff7e5f]" />
+            </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Wallet Connection Required</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-lg font-semibold text-[#3d3436]">Wallet Connection Required</h3>
+              <p className="text-sm text-[#3d3436]/70">
                 Please connect your Sui wallet to view and manage your documents.
               </p>
             </div>
@@ -171,32 +174,38 @@ export default function DocumentsPage() {
   return (
     <div className="min-h-screen bg-background pt-24 pb-12 px-4">
       <div className="max-w-6xl mx-auto">
+        {/* Header */}
         <div className="mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#3d3436] mb-4">
+            <FileText className="w-8 h-8 text-white" />
+          </div>
           <h1 className="text-4xl font-bold mb-2">
-            <span className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-[#3d3436]">
               My Documents
             </span>
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-[#b35340] text-xl">
             Manage your uploaded documents and access control
           </p>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-            <span className="ml-3 text-muted-foreground">Loading documents...</span>
+            <Loader2 className="w-8 h-8 animate-spin text-[#ff7e5f]" />
+            <span className="ml-3 text-[#3d3436] font-medium">Loading documents...</span>
           </div>
         ) : documents.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">No documents yet</h3>
-            <p className="text-muted-foreground mb-6">
+          <div className="bg-[#feb47b] border-2 border-[#b35340] rounded-xl p-12 text-center shadow-lg">
+            <div className="w-16 h-16 rounded-full bg-[#ff7e5f]/20 flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-[#ff7e5f]" />
+            </div>
+            <h3 className="text-xl font-semibold text-[#3d3436] mb-2">No documents yet</h3>
+            <p className="text-[#3d3436]/70 mb-6">
               Upload your first document to get started
             </p>
             <a
               href="/upload"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#ff7e5f] text-[#ffedea] rounded-lg hover:bg-[#ff9a76] transition-colors font-semibold shadow-md"
             >
               <FileText className="w-5 h-5" />
               Upload Document
@@ -210,31 +219,43 @@ export default function DocumentsPage() {
                 <button
                   key={doc.documentId}
                   onClick={() => setSelectedDoc(doc)}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                  className={`w-full text-left p-4 rounded-lg border-2 transition-all shadow-md ${
                     selectedDoc?.documentId === doc.documentId
-                      ? 'border-blue-500 bg-blue-500/10'
-                      : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                      ? 'border-[#ff7e5f] bg-[#feb47b]'
+                      : 'border-[#b35340]/30 bg-[#ffedea] hover:border-[#b35340]'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3 flex-1">
-                      <div className="p-2 bg-gray-700 rounded-lg">
-                        <FileText className="w-5 h-5 text-blue-400" />
+                      <div className={`p-2 rounded-lg ${
+                        selectedDoc?.documentId === doc.documentId
+                          ? 'bg-[#ff7e5f]/20'
+                          : 'bg-[#feb47b]'
+                      }`}>
+                        <FileText className={`w-5 h-5 ${
+                          selectedDoc?.documentId === doc.documentId
+                            ? 'text-[#ff7e5f]'
+                            : 'text-[#3d3436]'
+                        }`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-100 truncate">
+                        <h3 className="font-semibold text-[#3d3436] truncate">
                           {doc.filename}
                         </h3>
-                        <p className="text-sm text-gray-400 mt-1">
+                        <p className="text-sm text-[#3d3436]/60 mt-1">
                           {(doc.size / 1024).toFixed(2)} KB •{' '}
                           {new Date(doc.uploadedAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     {doc.isPrivate ? (
-                      <Lock className="w-5 h-5 text-green-400 flex-shrink-0" />
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                        <Lock className="w-4 h-4 text-green-600" />
+                      </div>
                     ) : (
-                      <Unlock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                      <div className="w-8 h-8 rounded-full bg-[#3d3436]/10 flex items-center justify-center shrink-0">
+                        <Unlock className="w-4 h-4 text-[#3d3436]/60" />
+                      </div>
                     )}
                   </div>
                 </button>
@@ -255,9 +276,11 @@ export default function DocumentsPage() {
                   onRevokeAccess={handleRevokeAccess}
                 />
               ) : (
-                <div className="bg-card border border-border rounded-xl p-8 text-center">
-                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
+                <div className="bg-[#feb47b] border-2 border-[#b35340] rounded-xl p-8 text-center shadow-lg">
+                  <div className="w-12 h-12 rounded-full bg-[#ff7e5f]/20 flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-6 h-6 text-[#ff7e5f]" />
+                  </div>
+                  <p className="text-[#3d3436]/70 font-medium">
                     Select a document to manage access control
                   </p>
                 </div>
