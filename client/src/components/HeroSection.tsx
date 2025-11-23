@@ -74,11 +74,11 @@ export function HeroSection() {
               className="flex flex-col sm:flex-row gap-4"
             >
               <button className="px-8 py-4 rounded-full bg-[#feb47b] text-[#3d3436] font-semibold text-lg hover:shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105">
-                Get Started Free
+                <a href="/upload">Get Started Free</a>
               </button>
 
               <button className="px-8 py-4 rounded-full border-2 border-border bg-background/50 backdrop-blur-sm text-foreground font-semibold text-lg hover:bg-accent transition-all duration-300 hover:scale-105">
-                View Documentation
+                <a href="/docs">Learn More</a>
               </button>
             </motion.div>
 
