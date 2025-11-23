@@ -24,7 +24,7 @@ export async function GET() {
         totalVectors: localStats.totalVectors,
         version: localStats.version,
         isStale: registryStats.version > localStats.version,
-        lastSync: localStats.lastSync,
+        // lastSync: localStats.lastSync, // Property doesn't exist in VectorStoreStats
       },
       status: 'ok',
     });

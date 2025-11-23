@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { MemoryVectorStore } from '@/utils/memory-vectorstore';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { Document } from '@langchain/core/documents';
@@ -65,7 +64,7 @@ export class VectorStoreService {
           try {
             await this.syncFromSuiRegistry();
             console.log('✓ Vector store synced from Sui registry');
-          } catch (_error) {
+          } catch (error) {
             console.log('⚠️  Could not sync from Sui, creating empty store');
             this.store = new MemoryVectorStore(this.embeddings);
           }

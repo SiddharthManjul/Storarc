@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * API endpoint for confirming document upload after transaction execution
  * Stores document metadata in the metadata store

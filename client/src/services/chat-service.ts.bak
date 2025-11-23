@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { ChatRegistryClient, Chat } from './chat-registry-client';
-
+import { ChatRegistryClient, MessageMetadata, Chat } from "./chat-registry-client";
 import { WalrusClient } from "./walrus-client";
 import { chatMetadataStore, ChatMetadata } from "./chat-metadata-store";
 import crypto from "crypto";

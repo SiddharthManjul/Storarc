@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Encryption Helper for Private Document Uploads
  * Handles SEAL encryption and access policy creation
@@ -96,7 +95,7 @@ export async function getPolicyIdFromTransaction(
               console.log('✅ Access policy found (fallback):', objectId);
               return objectId;
             }
-          } catch (_e) {
+          } catch (e) {
             continue;
           }
         }
@@ -175,7 +174,7 @@ export async function decryptFileContent(
   }
 
   // Extract owner
-  const offset = marker.length;
+  let offset = marker.length;
   let ownerEnd = offset;
   while (ownerEnd < encryptedContent.length && encryptedContent[ownerEnd] !== 58) { // 58 = ':'
     ownerEnd++;

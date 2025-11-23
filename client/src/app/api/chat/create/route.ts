@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { Message } from "@/services/chat-service";
 import { getUserFromRequest } from "@/lib/auth-helpers";
@@ -26,6 +27,13 @@ export async function POST(request: NextRequest) {
 
     // Get user-specific chat service
     const chatService = await getUserChatService(user.userAddr);
+
+    if (!chatService) {
+      return NextResponse.json(
+        { error: "Failed to initialize chat service" },
+        { status: 500 }
+      );
+    }
 
     // If no registry, user needs to create one first
     if (!chatService) {

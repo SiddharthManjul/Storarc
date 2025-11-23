@@ -96,7 +96,7 @@ export async function getPolicyIdFromTransaction(
               console.log('✅ Access policy found (fallback):', objectId);
               return objectId;
             }
-          } catch (_e) {
+          } catch (e) {
             continue;
           }
         }

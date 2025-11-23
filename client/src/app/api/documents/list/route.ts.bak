@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * API Route: List Documents
  * Returns all documents for a user with encryption metadata

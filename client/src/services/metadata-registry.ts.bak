@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Metadata Registry - Sui-Based Persistent Storage
  * Stores user metadata blob IDs on Sui blockchain

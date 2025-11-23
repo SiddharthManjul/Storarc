@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
-import { FileText, Lock, Unlock, Users, Loader2 } from 'lucide-react';
+import { FileText, Lock, Unlock, Users, ExternalLink, Loader2 } from 'lucide-react';
 import { AccessControlPanel } from '@/components/AccessControlPanel';
 import { Transaction } from '@mysten/sui/transactions';
 
@@ -21,7 +21,7 @@ interface Document {
 export default function DocumentsPage() {
   const currentAccount = useCurrentAccount();
   const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
-  const _suiClient = useSuiClient();
+  const suiClient = useSuiClient();
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,6 @@ export default function DocumentsPage() {
     if (currentAccount) {
       loadDocuments();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentAccount]);
 
   const loadDocuments = async () => {

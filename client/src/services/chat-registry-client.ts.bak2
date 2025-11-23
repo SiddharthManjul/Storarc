@@ -307,7 +307,7 @@ export class ChatRegistryClient {
       }
 
       const content = object.data.content as any;
-      // const chats = content.fields.chats.fields;
+      const chats = content.fields.chats.fields;
 
       // Search for chat in the table
       // Note: This is simplified - in production, use dynamic fields API

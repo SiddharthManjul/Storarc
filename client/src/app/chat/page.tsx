@@ -66,6 +66,7 @@ function ChatPageContent() {
       setLoadingChats(false);
       setChats([]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentAccount]);
 
   const loadChats = async () => {

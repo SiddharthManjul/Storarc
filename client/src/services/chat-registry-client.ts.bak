@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SuiClient } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
@@ -307,7 +306,7 @@ export class ChatRegistryClient {
       }
 
       const content = object.data.content as any;
-      // const chats = content.fields.chats.fields;
+      const chats = content.fields.chats.fields;
 
       // Search for chat in the table
       // Note: This is simplified - in production, use dynamic fields API

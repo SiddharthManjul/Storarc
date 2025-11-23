@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
-// const TARGET_TEXT = "Storarc";
+const TARGET_TEXT = "Storarc";
 const CYCLES_PER_LETTER = 2;
 const SHUFFLE_TIME = 50;
 
@@ -22,7 +22,7 @@ export function EncryptButton({
 }: EncryptButtonProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [text, setText] = useState(children);
-  const [_isHovered, setIsHovered] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const scramble = () => {
     let pos = 0;

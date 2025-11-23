@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/auth-helpers";
 import { getUserChatService } from "@/lib/chat-api-helpers";
@@ -25,6 +26,20 @@ export async function POST(request: NextRequest) {
 
     // Get user-specific chat service
     const chatService = await getUserChatService(user.userAddr);
+
+    if (!chatService) {
+      return NextResponse.json(
+        { error: "Failed to initialize chat service" },
+        { status: 500 }
+      );
+    }
+
+    if (!chatService) {
+      return NextResponse.json(
+        { error: "Failed to initialize chat service" },
+        { status: 500 }
+      );
+    }
 
     await chatService.setChatImportance(chatId, isImportant);
 

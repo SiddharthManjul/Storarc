@@ -85,7 +85,7 @@ export function validateConfig() {
   };
 
   const missing = Object.entries(required)
-    .filter(([, value]) => !value)
+    .filter(([_, value]) => !value)
     .map(([key]) => key);
 
   if (missing.length > 0) {

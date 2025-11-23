@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -106,7 +107,8 @@ export class DocumentLoader {
     const dataBuffer = await fs.readFile(filepath);
 
     // Dynamic import for CommonJS module
-    const pdfParse = (await import('pdf-parse')).default;
+    const pdfParseModule = await import('pdf-parse');
+    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
     const data = await pdfParse(dataBuffer);
 
     return {

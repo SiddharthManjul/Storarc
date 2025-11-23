@@ -65,7 +65,7 @@ export class VectorStoreService {
           try {
             await this.syncFromSuiRegistry();
             console.log('✓ Vector store synced from Sui registry');
-          } catch (_error) {
+          } catch (error) {
             console.log('⚠️  Could not sync from Sui, creating empty store');
             this.store = new MemoryVectorStore(this.embeddings);
           }

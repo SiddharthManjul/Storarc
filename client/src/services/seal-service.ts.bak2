@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SEAL Service - Enterprise-grade encryption service using Mysten's SEAL
  * Provides client-side encryption, decryption, and session management
@@ -75,6 +74,7 @@ export class SealService {
     this.sealClient = new SealClient({
       suiClient: config.suiClient,
       serverConfigs: keyServers,
+      threshold,
       verifyKeyServers: config.verifyKeyServers ?? false,
     });
 
@@ -102,7 +102,7 @@ export class SealService {
       });
 
       // Parse encrypted object to get metadata
-      // const parsedObject = new EncryptedObject(encryptedObject);
+      const parsedObject = new EncryptedObject(encryptedObject);
 
       return {
         encryptedData: encryptedObject,
@@ -139,7 +139,7 @@ export class SealService {
 
       // This will require the user to sign an approval transaction
       // The transaction calls seal_approve_document_access on the access policy
-      const decryptedData = await (this.sealClient as any).decrypt({
+      const decryptedData = await this.sealClient.decrypt({
         encryptedObject: encryptedArray,
         sessionKey: activeSessionKey,
       });
@@ -163,7 +163,7 @@ export class SealService {
     }
 
     // Create new session key
-    const sessionKey = await (SessionKey as any).create({
+    const sessionKey = await SessionKey.create({
       suiClient: this.config.suiClient,
       userAddress,
       ttlMinutes: SESSION_TTL_MINUTES,
@@ -187,7 +187,7 @@ export class SealService {
     try {
       // Session keys have an internal expiry check
       // We can verify by attempting to get its status
-      return (sessionKey as any).isValid();
+      return sessionKey.isValid();
     } catch {
       return false;
     }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/auth-helpers";
 import { getUserChatService } from "@/lib/chat-api-helpers";
@@ -15,11 +14,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { chatId } = await request.json();
+    const { chatId, isImportant } = await request.json();
 
-    if (!chatId) {
+    if (!chatId || typeof isImportant !== "boolean") {
       return NextResponse.json(
-        { error: "Missing required field: chatId" },
+        { error: "Missing required fields: chatId, isImportant" },
         { status: 400 }
       );
     }
@@ -27,31 +26,16 @@ export async function POST(request: NextRequest) {
     // Get user-specific chat service
     const chatService = await getUserChatService(user.userAddr);
 
-    if (!chatService) {
-      return NextResponse.json(
-        { error: "Failed to initialize chat service" },
-        { status: 500 }
-      );
-    }
-
-    if (!chatService) {
-      return NextResponse.json(
-        { error: "Failed to initialize chat service" },
-        { status: 500 }
-      );
-    }
-
-    // Delete the chat
-    await chatService.deleteChat(chatId);
+    await chatService.setChatImportance(chatId, isImportant);
 
     return NextResponse.json({
       success: true,
-      message: "Chat deleted successfully",
+      message: `Chat ${isImportant ? "marked as" : "unmarked from"} important`,
     });
   } catch (error: any) {
-    console.error("Error deleting chat:", error);
+    console.error("Error setting chat importance:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to delete chat" },
+      { error: error.message || "Failed to set chat importance" },
       { status: 500 }
     );
   }
