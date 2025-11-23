@@ -16,7 +16,7 @@ export function WorldMapSection() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-            <span className="bg-linear-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r text-[#3d3436] bg-clip-text">
               Truly Decentralized
             </span>
           </h2>
