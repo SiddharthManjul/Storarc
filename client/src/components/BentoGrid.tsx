@@ -17,7 +17,7 @@ export function BentoGrid() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-            <span className="bg-linear-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r text-[#3d3436] bg-clip-text">
               Powerful Features
             </span>
           </h2>
@@ -98,7 +98,7 @@ const GridItem = ({ area, icon, iconGradient, title, description }: GridItemProp
           proximity={80}
           inactiveZone={0.01}
         />
-        <div className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl bg-emerald-300 dark:bg-teal-500/20 p-8 md:p-8 shadow-lg">
+        <div className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl bg-[#b35340] p-8 md:p-8 shadow-lg">
           <div className="relative flex flex-1 flex-col justify-between gap-4">
             <div className={`w-fit rounded-xl bg-linear-to-br ${iconGradient} p-3 shadow-lg`}>
               <div className="text-white">
@@ -106,7 +106,7 @@ const GridItem = ({ area, icon, iconGradient, title, description }: GridItemProp
               </div>
             </div>
             <div className="space-y-3">
-              <h3 className="font-sans text-2xl font-bold text-gray-800 md:text-2xl">
+              <h3 className="font-sans text-2xl font-bold text-[#ffedea] md:text-2xl">
                 {title}
               </h3>
               <p className="font-sans text-base leading-relaxed text-black">
