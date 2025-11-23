@@ -25,7 +25,7 @@ export function Footer() {
       { name: "Terms", href: "#" },
     ],
     social: [
-      { name: "GitHub", icon: Github, href: "#" },
+      { name: "GitHub", icon: Github, href: "https://github.com/SiddharthManjul/Storarc.git" },
       { name: "Twitter", icon: Twitter, href: "#" },
       { name: "LinkedIn", icon: Linkedin, href: "#" },
       { name: "Email", icon: Mail, href: "#" },
@@ -47,7 +47,7 @@ export function Footer() {
                 viewport={{ once: true }}
               >
                 <a href="/" className="inline-block">
-                  <span className="text-3xl font-bold bg-linear-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+                  <span className="text-3xl font-bold bg-[#3d3436] bg-clip-text text-transparent">
                     Storarc
                   </span>
                 </a>
