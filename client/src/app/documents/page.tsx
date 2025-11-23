@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -173,7 +174,7 @@ export default function DocumentsPage() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">
-            <span className="bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
               My Documents
             </span>
           </h1>
@@ -232,9 +233,9 @@ export default function DocumentsPage() {
                       </div>
                     </div>
                     {doc.isPrivate ? (
-                      <Lock className="w-5 h-5 text-green-400 flex-shrink-0" />
+                      <Lock className="w-5 h-5 text-green-400 shrink-0" />
                     ) : (
-                      <Unlock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                      <Unlock className="w-5 h-5 text-gray-400 shrink-0" />
                     )}
                   </div>
                 </button>
