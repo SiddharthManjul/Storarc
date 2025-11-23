@@ -49,6 +49,7 @@ function ChatPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [needsRegistry, setNeedsRegistry] = useState(false);
   const [creatingRegistry, setCreatingRegistry] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Helper to get auth headers
   const getAuthHeaders = (): Record<string, string> => {
@@ -236,6 +237,7 @@ function ChatPageContent() {
   // Handle chat selection
   const handleChatSelect = async (chatId: string) => {
     setSelectedChatId(chatId);
+    setIsSidebarOpen(false); // Close sidebar on mobile
     const chat = chats.find((c) => c.id === chatId);
 
     // Load messages if not already loaded
@@ -403,6 +405,7 @@ function ChatPageContent() {
   const handleNewChat = () => {
     setSelectedChatId(null);
     setInputMessage("");
+    setIsSidebarOpen(false); // Close sidebar on mobile
   };
 
   const toggleImportant = async (chatId: string, e: React.MouseEvent) => {
@@ -492,9 +495,29 @@ function ChatPageContent() {
   };
 
   return (
-    <div className="fixed inset-0 pt-16 bg-background flex">
+    <div className="fixed inset-0 pt-16 md:pt-16 bg-background flex">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="lg:hidden fixed top-20 left-4 z-50 p-2 rounded-lg bg-[#3d3436] text-[#ffedea] shadow-lg"
+      >
+        <MessageSquare className="h-5 w-5" />
+      </button>
+
+      {/* Sidebar Overlay on mobile */}
+      {isSidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 pt-16"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-80 border-r-2 border-[#b35340] bg-[#feb47b] flex flex-col h-full">
+      <div className={cn(
+        "w-80 border-r-2 border-[#b35340] bg-[#feb47b] flex flex-col h-full transition-transform duration-300 z-40",
+        "fixed lg:relative",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
         {/* New Chat Button */}
         <div className="p-4 border-b-2 border-[#b35340] shrink-0">
           <button
@@ -654,33 +677,33 @@ function ChatPageContent() {
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="border-b-2 border-[#b35340] bg-[#feb47b] px-6 py-4 shrink-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-xl font-semibold text-[#3d3436]">
+            <div className="border-b-2 border-[#b35340] bg-[#feb47b] px-4 md:px-6 py-3 md:py-4 shrink-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-base md:text-xl font-semibold text-[#3d3436] truncate">
                     {selectedChat.title}
                   </h1>
-                  <p className="text-sm text-[#3d3436]/70 mt-1">
+                  <p className="text-xs md:text-sm text-[#3d3436]/70 mt-0.5 md:mt-1">
                     {selectedChat.messages.length} messages
                   </p>
                 </div>
                 {selectedChat.daysRemaining !== undefined && (
                   <div
                     className={cn(
-                      "px-3 py-1 rounded-full text-xs font-medium",
+                      "px-2 md:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap shrink-0",
                       selectedChat.daysRemaining < 7
                         ? "bg-orange-100 text-orange-700"
                         : "bg-green-100 text-green-700"
                     )}
                   >
-                    Expires in {selectedChat.daysRemaining} days
+                    {selectedChat.daysRemaining}d left
                   </div>
                 )}
               </div>
             </div>
 
             {/* Messages - Scrollable */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 min-h-0">
+            <div className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 min-h-0">
               <AnimatePresence>
                 {selectedChat.messages.map((message) => (
                   <motion.div
@@ -689,35 +712,35 @@ function ChatPageContent() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     className={cn(
-                      "flex gap-4",
+                      "flex gap-2 md:gap-4",
                       message.role === "user" ? "justify-end" : "justify-start"
                     )}
                   >
                     <div
                       className={cn(
-                        "max-w-3xl rounded-2xl px-6 py-4 shadow-md",
+                        "max-w-[85%] md:max-w-3xl rounded-xl md:rounded-2xl px-3 md:px-6 py-3 md:py-4 shadow-md",
                         message.role === "user"
                           ? "bg-[#ff7e5f] text-[#ffedea]"
                           : "bg-[#feb47b] text-[#3d3436] border-2 border-[#b35340]/20"
                       )}
                     >
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      <p className="text-xs md:text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
                         {message.content}
                       </p>
 
                       {message.sources && message.sources.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-[#3d3436]/20 space-y-2">
+                        <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-[#3d3436]/20 space-y-2">
                           <p className="text-xs font-medium text-[#3d3436]/80 mb-2">
                             Sources:
                           </p>
                           {message.sources.map((source, idx) => (
                             <div
                               key={idx}
-                              className="flex items-start gap-2 text-xs bg-[#ffedea] rounded-lg p-3 border border-[#b35340]/10"
+                              className="flex items-start gap-2 text-xs bg-[#ffedea] rounded-lg p-2 md:p-3 border border-[#b35340]/10"
                             >
-                              <FileText className="h-4 w-4 text-[#ff7e5f] shrink-0 mt-0.5" />
+                              <FileText className="h-3.5 md:h-4 md:w-4 text-[#ff7e5f] shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-[#3d3436] truncate">
+                                <p className="font-medium text-[#3d3436] truncate text-xs">
                                   {source.filename}
                                 </p>
                                 <p className="text-[#3d3436]/60 text-xs mt-1">
@@ -729,7 +752,7 @@ function ChatPageContent() {
                         </div>
                       )}
 
-                      <p className="text-xs mt-3 opacity-70">
+                      <p className="text-xs mt-2 md:mt-3 opacity-70">
                         {formatTimestamp(message.timestamp)}
                       </p>
                     </div>
@@ -741,9 +764,9 @@ function ChatPageContent() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-4"
+                  className="flex gap-2 md:gap-4"
                 >
-                  <div className="max-w-3xl rounded-2xl px-6 py-4 bg-[#feb47b] border-2 border-[#b35340]/20 shadow-md">
+                  <div className="max-w-[85%] md:max-w-3xl rounded-xl md:rounded-2xl px-3 md:px-6 py-3 md:py-4 bg-[#feb47b] border-2 border-[#b35340]/20 shadow-md">
                     <div className="flex gap-2">
                       <div
                         className="w-2 h-2 bg-[#ff7e5f] rounded-full animate-bounce"
@@ -766,13 +789,13 @@ function ChatPageContent() {
         ) : (
           <>
             {/* Empty State */}
-            <div className="flex-1 flex items-center justify-center min-h-0">
+            <div className="flex-1 flex items-center justify-center min-h-0 px-4">
               <div className="text-center">
-                <MessageSquare className="h-16 w-16 text-[#ff7e5f]/40 mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold text-[#3d3436] mb-2">
+                <MessageSquare className="h-12 w-12 md:h-16 md:w-16 text-[#ff7e5f]/40 mx-auto mb-3 md:mb-4" />
+                <h2 className="text-lg md:text-2xl font-semibold text-[#3d3436] mb-2">
                   Welcome to Storarc Chat
                 </h2>
-                <p className="text-[#3d3436]/70 mb-6">
+                <p className="text-sm md:text-base text-[#3d3436]/70 mb-4 md:mb-6">
                   Start typing below to begin a new conversation
                 </p>
               </div>
@@ -781,13 +804,13 @@ function ChatPageContent() {
         )}
 
         {/* Input Area - Fixed at bottom */}
-        <div className="border-t-2 border-[#b35340] bg-[#feb47b] px-6 py-4 shrink-0">
+        <div className="border-t-2 border-[#b35340] bg-[#feb47b] px-3 md:px-6 py-3 md:py-4 shrink-0">
           {error && (
-            <div className="max-w-4xl mx-auto mb-3 p-3 bg-red-50 border-2 border-red-200 rounded-lg text-sm text-red-700 font-medium">
+            <div className="max-w-4xl mx-auto mb-2 md:mb-3 p-2 md:p-3 bg-red-50 border-2 border-red-200 rounded-lg text-xs md:text-sm text-red-700 font-medium">
               {error}
             </div>
           )}
-          <div className="max-w-4xl mx-auto flex gap-4">
+          <div className="max-w-4xl mx-auto flex gap-2 md:gap-4">
             <input
               type="text"
               value={inputMessage}
@@ -796,16 +819,16 @@ function ChatPageContent() {
                 e.key === "Enter" && !e.shiftKey && handleSendMessage()
               }
               placeholder="Ask a question about your documents..."
-              className="flex-1 px-4 py-3 rounded-lg border-2 border-[#b35340]/30 bg-[#ffedea] text-[#3d3436] placeholder-[#3d3436]/50 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] focus:border-[#ff7e5f]"
+              className="flex-1 px-3 md:px-4 py-2 md:py-3 rounded-lg border-2 border-[#b35340]/30 bg-[#ffedea] text-sm md:text-base text-[#3d3436] placeholder-[#3d3436]/50 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] focus:border-[#ff7e5f]"
               disabled={isLoading}
             />
             <button
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isLoading}
-              className="px-6 py-3 rounded-lg bg-[#ff7e5f] text-[#ffedea] font-semibold hover:bg-[#ff9a76] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
+              className="px-3 md:px-6 py-2 md:py-3 rounded-lg bg-[#ff7e5f] text-[#ffedea] font-semibold hover:bg-[#ff9a76] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 md:gap-2 shadow-md"
             >
-              <Send className="h-5 w-5" />
-              Send
+              <Send className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="hidden sm:inline">Send</span>
             </button>
           </div>
         </div>
