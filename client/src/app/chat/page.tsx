@@ -492,43 +492,43 @@ function ChatPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-16 flex">
+    <div className="fixed inset-0 pt-16 bg-background flex">
       {/* Sidebar */}
-      <div className="w-80 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col">
+      <div className="w-80 border-r-2 border-[#b35340] bg-[#feb47b] flex flex-col h-full">
         {/* New Chat Button */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="p-4 border-b-2 border-[#b35340] shrink-0">
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-linear-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-[#ff7e5f] text-[#ffedea] hover:bg-[#ff9a76] transition-all duration-200 font-semibold shadow-md"
           >
             <Plus className="h-5 w-5" />
             <span className="font-medium">New Chat</span>
           </button>
         </div>
 
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Chat List - Scrollable */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {!currentAccount ? (
             <div className="p-4 text-center">
-              <div className="text-gray-500 dark:text-gray-400 mb-2">
+              <div className="text-[#3d3436] mb-2 font-medium">
                 Wallet not connected
               </div>
-              <div className="text-sm text-gray-400 dark:text-gray-500">
+              <div className="text-sm text-[#3d3436]/70">
                 Connect your wallet to view and create chats
               </div>
             </div>
           ) : loadingChats ? (
-            <div className="p-4 text-center text-gray-500">Loading chats...</div>
+            <div className="p-4 text-center text-[#3d3436] font-medium">Loading chats...</div>
           ) : needsRegistry ? (
             <div className="p-4">
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="bg-[#ffedea] border-2 border-[#ff7e5f]/30 rounded-lg p-4">
                 <div className="flex items-start gap-3 mb-4">
-                  <Wallet className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                  <Wallet className="h-5 w-5 text-[#ff7e5f] shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                    <h3 className="font-semibold text-[#3d3436] mb-1">
                       Create Your Chat Registry
                     </h3>
-                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                    <p className="text-sm text-[#3d3436]/80 mb-3">
                       One-time setup: Create your personal chat registry on Sui blockchain.
                       You will sign one transaction (~0.002 SUI gas), then all future chats
                       will be stored without additional signatures.
@@ -536,7 +536,7 @@ function ChatPageContent() {
                     <button
                       onClick={createRegistry}
                       disabled={creatingRegistry}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#ff7e5f] text-[#ffedea] hover:bg-[#ff9a76] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
                       {creatingRegistry ? (
                         <>
@@ -555,7 +555,7 @@ function ChatPageContent() {
               </div>
             </div>
           ) : chats.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
+            <div className="p-4 text-center text-[#3d3436]/70">
               No chats yet. Start a new conversation!
             </div>
           ) : (
@@ -565,10 +565,10 @@ function ChatPageContent() {
                   key={chat.id}
                   onClick={() => handleChatSelect(chat.id)}
                   className={cn(
-                    "w-full text-left p-3 rounded-lg transition-all duration-200 group",
+                    "w-full text-left p-3 rounded-lg transition-all duration-200 group border-2",
                     selectedChatId === chat.id
-                      ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent"
+                      ? "bg-[#ffedea] border-[#ff7e5f] shadow-md"
+                      : "hover:bg-[#ffedea]/50 border-transparent"
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -576,8 +576,8 @@ function ChatPageContent() {
                       className={cn(
                         "h-5 w-5 mt-0.5 shrink-0",
                         selectedChatId === chat.id
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-gray-400"
+                          ? "text-[#ff7e5f]"
+                          : "text-[#3d3436]/60"
                       )}
                     />
                     <div className="flex-1 min-w-0">
@@ -586,8 +586,8 @@ function ChatPageContent() {
                           className={cn(
                             "font-medium text-sm truncate",
                             selectedChatId === chat.id
-                              ? "text-blue-900 dark:text-blue-100"
-                              : "text-gray-900 dark:text-gray-100"
+                              ? "text-[#3d3436]"
+                              : "text-[#3d3436]/80"
                           )}
                         >
                           {chat.title}
@@ -595,7 +595,7 @@ function ChatPageContent() {
                         <div className="flex items-center gap-1">
                           <div
                             onClick={(e) => toggleImportant(chat.id, e)}
-                            className="shrink-0 cursor-pointer p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                            className="shrink-0 cursor-pointer p-1 hover:bg-[#ff7e5f]/20 rounded"
                             title={chat.isImportant ? "Unmark as important" : "Mark as important"}
                           >
                             <Star
@@ -603,31 +603,31 @@ function ChatPageContent() {
                                 "h-4 w-4 transition-colors",
                                 chat.isImportant
                                   ? "fill-yellow-400 text-yellow-400"
-                                  : "text-gray-300 hover:text-yellow-400"
+                                  : "text-[#3d3436]/40 hover:text-yellow-400"
                               )}
                             />
                           </div>
                           <div
                             onClick={(e) => deleteChat(chat.id, e)}
-                            className="shrink-0 cursor-pointer p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                            className="shrink-0 cursor-pointer p-1 hover:bg-red-100 rounded"
                             title="Delete chat"
                           >
                             <Trash2
-                              className="h-4 w-4 text-gray-400 hover:text-red-600 transition-colors"
+                              className="h-4 w-4 text-[#3d3436]/40 hover:text-red-600 transition-colors"
                             />
                           </div>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                      <p className="text-xs text-[#3d3436]/60 truncate mt-1">
                         {chat.lastMessage}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <div className="flex items-center gap-1 text-xs text-[#3d3436]/50">
                           <Clock className="h-3 w-3" />
                           <span>{formatTimestamp(chat.timestamp)}</span>
                         </div>
                         {chat.daysRemaining !== undefined && chat.daysRemaining < 7 && (
-                          <div className="flex items-center gap-1 text-xs text-orange-500">
+                          <div className="flex items-center gap-1 text-xs text-orange-600">
                             <AlertCircle className="h-3 w-3" />
                             <span>{chat.daysRemaining}d left</span>
                           </div>
@@ -642,25 +642,25 @@ function ChatPageContent() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+        <div className="p-4 border-t-2 border-[#b35340] shrink-0">
+          <p className="text-xs text-[#3d3436]/70 text-center font-medium">
             Chat history stored on Walrus + Sui
           </p>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-full">
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4">
+            <div className="border-b-2 border-[#b35340] bg-[#feb47b] px-6 py-4 shrink-0">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  <h1 className="text-xl font-semibold text-[#3d3436]">
                     {selectedChat.title}
                   </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-sm text-[#3d3436]/70 mt-1">
                     {selectedChat.messages.length} messages
                   </p>
                 </div>
@@ -679,8 +679,8 @@ function ChatPageContent() {
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+            {/* Messages - Scrollable */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 min-h-0">
               <AnimatePresence>
                 {selectedChat.messages.map((message) => (
                   <motion.div
@@ -695,10 +695,10 @@ function ChatPageContent() {
                   >
                     <div
                       className={cn(
-                        "max-w-3xl rounded-2xl px-6 py-4",
+                        "max-w-3xl rounded-2xl px-6 py-4 shadow-md",
                         message.role === "user"
-                          ? "bg-linear-to-r from-blue-500 to-purple-600 text-white"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                          ? "bg-[#ff7e5f] text-[#ffedea]"
+                          : "bg-[#feb47b] text-[#3d3436] border-2 border-[#b35340]/20"
                       )}
                     >
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -706,21 +706,21 @@ function ChatPageContent() {
                       </p>
 
                       {message.sources && message.sources.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                        <div className="mt-4 pt-4 border-t border-[#3d3436]/20 space-y-2">
+                          <p className="text-xs font-medium text-[#3d3436]/80 mb-2">
                             Sources:
                           </p>
                           {message.sources.map((source, idx) => (
                             <div
                               key={idx}
-                              className="flex items-start gap-2 text-xs bg-white dark:bg-gray-700 rounded-lg p-3"
+                              className="flex items-start gap-2 text-xs bg-[#ffedea] rounded-lg p-3 border border-[#b35340]/10"
                             >
-                              <FileText className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                              <FileText className="h-4 w-4 text-[#ff7e5f] shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                <p className="font-medium text-[#3d3436] truncate">
                                   {source.filename}
                                 </p>
-                                <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                                <p className="text-[#3d3436]/60 text-xs mt-1">
                                   Relevance: {(source.relevance * 100).toFixed(0)}%
                                 </p>
                               </div>
@@ -743,18 +743,18 @@ function ChatPageContent() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex gap-4"
                 >
-                  <div className="max-w-3xl rounded-2xl px-6 py-4 bg-gray-100 dark:bg-gray-800">
+                  <div className="max-w-3xl rounded-2xl px-6 py-4 bg-[#feb47b] border-2 border-[#b35340]/20 shadow-md">
                     <div className="flex gap-2">
                       <div
-                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        className="w-2 h-2 bg-[#ff7e5f] rounded-full animate-bounce"
                         style={{ animationDelay: "0ms" }}
                       />
                       <div
-                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        className="w-2 h-2 bg-[#ff7e5f] rounded-full animate-bounce"
                         style={{ animationDelay: "150ms" }}
                       />
                       <div
-                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                        className="w-2 h-2 bg-[#ff7e5f] rounded-full animate-bounce"
                         style={{ animationDelay: "300ms" }}
                       />
                     </div>
@@ -766,13 +766,13 @@ function ChatPageContent() {
         ) : (
           <>
             {/* Empty State */}
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center min-h-0">
               <div className="text-center">
-                <MessageSquare className="h-16 w-16 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                <MessageSquare className="h-16 w-16 text-[#ff7e5f]/40 mx-auto mb-4" />
+                <h2 className="text-2xl font-semibold text-[#3d3436] mb-2">
                   Welcome to Storarc Chat
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-6">
+                <p className="text-[#3d3436]/70 mb-6">
                   Start typing below to begin a new conversation
                 </p>
               </div>
@@ -780,10 +780,10 @@ function ChatPageContent() {
           </>
         )}
 
-        {/* Input Area - Always visible */}
-        <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-4">
+        {/* Input Area - Fixed at bottom */}
+        <div className="border-t-2 border-[#b35340] bg-[#feb47b] px-6 py-4 shrink-0">
           {error && (
-            <div className="max-w-4xl mx-auto mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <div className="max-w-4xl mx-auto mb-3 p-3 bg-red-50 border-2 border-red-200 rounded-lg text-sm text-red-700 font-medium">
               {error}
             </div>
           )}
@@ -796,13 +796,13 @@ function ChatPageContent() {
                 e.key === "Enter" && !e.shiftKey && handleSendMessage()
               }
               placeholder="Ask a question about your documents..."
-              className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-4 py-3 rounded-lg border-2 border-[#b35340]/30 bg-[#ffedea] text-[#3d3436] placeholder-[#3d3436]/50 focus:outline-none focus:ring-2 focus:ring-[#ff7e5f] focus:border-[#ff7e5f]"
               disabled={isLoading}
             />
             <button
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || isLoading}
-              className="px-6 py-3 rounded-lg bg-linear-to-r from-blue-500 to-purple-600 text-white font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-3 rounded-lg bg-[#ff7e5f] text-[#ffedea] font-semibold hover:bg-[#ff9a76] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md"
             >
               <Send className="h-5 w-5" />
               Send
