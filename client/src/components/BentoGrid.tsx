@@ -103,7 +103,7 @@ const GridItem = ({
           proximity={80}
           inactiveZone={0.01}
         />
-        <div className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl bg-[#b35340] p-8 md:p-8 shadow-lg">
+        <div className="relative flex h-full flex-col justify-between gap-6 overflow-hidden rounded-xl bg-[#feb47b] p-8 md:p-8 shadow-lg">
           <div className="relative flex flex-1 flex-col justify-between gap-4">
             <div
               className={`w-fit rounded-xl bg-linear-to-br ${iconGradient} p-3 shadow-lg`}
@@ -111,7 +111,7 @@ const GridItem = ({
               <div className="text-white">{icon}</div>
             </div>
             <div className="space-y-3">
-              <h3 className="font-sans text-2xl font-bold text-[#ffedea] md:text-2xl">
+              <h3 className="font-sans text-2xl font-bold text-[#3d3436] md:text-2xl">
                 {title}
               </h3>
               <div className="font-sans text-base leading-relaxed text-black">
